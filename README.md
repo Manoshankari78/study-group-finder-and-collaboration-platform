@@ -1,2 +1,2 @@
-# study-group-finder-and-collaboration-platform
+# Study Group Finder and Collaboration Platform
 A full stack web application.
