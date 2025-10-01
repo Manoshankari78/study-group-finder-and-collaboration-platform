@@ -1,6 +1,7 @@
 package com.studygroup.backend.service;
 
 import com.studygroup.backend.entity.User;
+import com.studygroup.backend.repository.PasswordResetTokenRepository;
 import com.studygroup.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,6 +18,9 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     public User registerUser(User user) {
         if (userRepository.existsByEmail(user.getEmail())) {
