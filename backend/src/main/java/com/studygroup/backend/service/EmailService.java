@@ -18,7 +18,7 @@ public class EmailService {
             message.setTo(toEmail);
             message.setSubject("Password Reset - Study Group Platform");
 
-            String resetLink = "http://localhost:3000/reset-password?token=" + resetToken;
+            String resetLink = "http://localhost:5173/reset-password?token=" + resetToken;
             String emailText = buildEmailText(resetLink, resetToken);
 
             message.setText(emailText);
@@ -39,8 +39,7 @@ public class EmailService {
             
             You requested to reset your password for the Study Group Platform.
             
-            Click this link to reset your password:
-            %s
+            Click this link to reset your password:%s
             
             Or use this token manually: %s
             

@@ -84,16 +84,16 @@ const Navbar = ({ onLogout }: NavbarProps) => {
               {/* Profile */}
               <Link
                 to="/profile"
-                className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-teal-500 p-2 rounded-xl hover:from-blue-600 hover:to-teal-600 transition-all duration-200 transform hover:scale-105 shadow-lg"
+                className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-teal-500 p-0.5 rounded-xl hover:from-blue-600 hover:to-teal-600 transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
                 {user?.avatarUrl ? (
                   <img 
                     src={user.avatarUrl} 
                     alt="Profile" 
-                    className="h-5 w-5 rounded-full object-cover"
+                    className="h-7 w-7 rounded-xl object-cover"
                   />
                 ) : (
-                  <User className="h-5 w-5 text-white" />
+                  <User className="h-7 w-7 text-white" />
                 )}
               </Link>
 

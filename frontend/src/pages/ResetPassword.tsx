@@ -51,6 +51,7 @@ const ResetPassword = () => {
     setError('');
 
     try {
+        
       await authAPI.resetPassword(token, formData.newPassword);
       setSuccess(true);
       
