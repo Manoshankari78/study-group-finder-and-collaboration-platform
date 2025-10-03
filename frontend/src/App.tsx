@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -12,16 +12,30 @@ import Calendar from './pages/Calendar';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilePage from './pages/ProfilePage';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+// Protected Route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+  
+  return user ? <>{children}</> : <Navigate to="/login" />;
+};
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
+// Public Route component (redirect to dashboard if already authenticated)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+  
+  return !user ? <>{children}</> : <Navigate to="/dashboard" />;
+};
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-  };
+function AppContent() {
+  const { logout } = useAuth();
 
   return (
     <div className="min-h-screen">
@@ -29,55 +43,107 @@ function App() {
         <Routes>
           <Route 
             path="/login" 
-            element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />} 
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } 
           />
           <Route 
             path="/register" 
-            element={!isAuthenticated ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" />} 
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } 
           />
           <Route 
             path="/dashboard" 
-            element={isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <Dashboard onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/courses" 
-            element={isAuthenticated ? <CourseManagement onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <CourseManagement onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/groups" 
-            element={isAuthenticated ? <GroupDiscovery onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <GroupDiscovery onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/groups/create" 
-            element={isAuthenticated ? <GroupCreation onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <GroupCreation onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/groups/:id" 
-            element={isAuthenticated ? <GroupDetail onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <GroupDetail onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/chat/:groupId?" 
-            element={isAuthenticated ? <Chat onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <Chat onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/calendar" 
-            element={isAuthenticated ? <Calendar onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <Calendar onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/notifications" 
-            element={isAuthenticated ? <NotificationsPage onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <NotificationsPage onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/profile" 
-            element={isAuthenticated ? <ProfilePage onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            element={
+              <ProtectedRoute>
+                <ProfilePage onLogout={logout} />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/" 
-            element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} 
+            element={<Navigate to="/dashboard" />} 
           />
         </Routes>
       </Router>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
