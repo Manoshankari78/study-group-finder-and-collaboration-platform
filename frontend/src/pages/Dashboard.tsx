@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { Users, Calendar, MessageSquare, TrendingUp, User, Plus, BookOpen, Clock, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -10,6 +11,7 @@ interface DashboardProps {
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const { user } = useAuth();
 
   const joinedGroups = [
     { id: 1, name: 'CS 101 Study Group', course: 'Introduction to Computer Science', members: 8, color: 'from-blue-500 to-blue-600', lastActivity: '2 hours ago' },
@@ -46,7 +48,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold font-inter mb-3">
-                Welcome back, John! 👋
+                  Welcome back, {user?.name}! 👋
               </h1>
               <p className="text-blue-100 font-roboto text-lg">
                 Ready to continue your learning journey? You have 3 active study groups and 5 upcoming events.

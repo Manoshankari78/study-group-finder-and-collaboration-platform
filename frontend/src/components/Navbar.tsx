@@ -1,6 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Home, BookOpen, Users, MessageSquare, Calendar, LogOut, User, Settings, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
   onLogout: () => void;
@@ -8,8 +8,15 @@ interface NavbarProps {
 
 const Navbar = ({ onLogout }: NavbarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
+
+  const handleLogout = () => {
+    onLogout();
+    navigate('/login');
+  };
 
   // Mock unread count - in real app this would come from props or context
   const unreadCount = 3;
@@ -77,10 +84,27 @@ const Navbar = ({ onLogout }: NavbarProps) => {
               {/* Profile */}
               <Link
                 to="/profile"
-                className="bg-gradient-to-r from-blue-500 to-teal-500 p-2 rounded-xl hover:from-blue-600 hover:to-teal-600 transition-all duration-200 transform hover:scale-105 shadow-lg"
+                className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-teal-500 p-2 rounded-xl hover:from-blue-600 hover:to-teal-600 transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
-                <User className="h-5 w-5 text-white" />
+                {user?.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt="Profile" 
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-5 w-5 text-white" />
+                )}
               </Link>
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="p-3 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 transform hover:scale-105"
+                title="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
