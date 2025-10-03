@@ -1,24 +1,38 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Users, BookOpen, MessageSquare, Calendar } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { authAPI } from '../services/api';
 
-interface LoginProps {
-  onLogin: () => void;
-}
-
-const Login = ({ onLogin }: LoginProps) => {
+const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await login(formData.email, formData.password, rememberMe);
+      navigate('/dashboard');
+    } catch (error: any) {
+      setError(error.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,14 +42,19 @@ const Login = ({ onLogin }: LoginProps) => {
     });
   };
 
-  const handleForgotPassword = (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setResetSent(true);
-    setTimeout(() => {
-      setResetSent(false);
-      setShowForgotPassword(false);
-      setForgotEmail('');
-    }, 3000);
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await authAPI.forgotPassword(forgotEmail);
+      setResetSent(true);
+    } catch (error: any) {
+      setError(error.message || 'Failed to send reset email. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -58,6 +77,12 @@ const Login = ({ onLogin }: LoginProps) => {
           </div>
           
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
             {showForgotPassword ? (
               <form className="space-y-6" onSubmit={handleForgotPassword}>
                 <div>
@@ -79,23 +104,27 @@ const Login = ({ onLogin }: LoginProps) => {
                 {resetSent && (
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
                     <p className="text-green-700 text-sm font-medium">
-                      Password reset link has been sent to your email!
+                      Password reset instructions have been sent to your email!
                     </p>
                   </div>
                 )}
 
                 <button
                   type="submit"
-                  disabled={resetSent}
+                  disabled={resetSent || isLoading}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {resetSent ? 'Reset Link Sent!' : 'Send Reset Link'}
+                  {isLoading ? 'Sending...' : resetSent ? 'Reset Link Sent!' : 'Send Reset Link'}
                 </button>
 
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={() => setShowForgotPassword(false)}
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setError('');
+                      setResetSent(false);
+                    }}
                     className="text-blue-600 hover:text-blue-700 text-sm transition-colors font-medium"
                   >
                     Back to Sign In
@@ -151,6 +180,8 @@ const Login = ({ onLogin }: LoginProps) => {
                       id="remember-me"
                       name="remember-me"
                       type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 bg-gray-50 border-gray-300 rounded"
                     />
                     <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
@@ -170,9 +201,10 @@ const Login = ({ onLogin }: LoginProps) => {
 
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
+                  disabled={isLoading}
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign In
+                  {isLoading ? 'Signing In...' : 'Sign In'}
                 </button>
               </form>
             )}
