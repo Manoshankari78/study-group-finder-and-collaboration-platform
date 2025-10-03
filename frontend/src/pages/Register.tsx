@@ -10,6 +10,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +40,7 @@ const Register = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password
-      });
+      }, rememberMe);
       navigate('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Registration failed. Please try again.');
@@ -160,6 +161,35 @@ const Register = () => {
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Profile Picture (Optional)
+              </label>
+              <div className="flex items-center justify-center w-full">
+                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-gray-200 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                    <Upload className="w-6 h-6 mb-1 text-gray-400" />
+                    <p className="text-xs text-gray-500">Upload Avatar</p>
+                  </div>
+                  <input type="file" className="hidden" accept="image/*" />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                id="remember-me-register"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 bg-gray-50 border-gray-300 rounded"
+              />
+              <label htmlFor="remember-me-register" className="ml-2 block text-sm text-gray-700">
+                Remember me
+              </label>
             </div>
 
             <button

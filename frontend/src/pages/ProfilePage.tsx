@@ -9,18 +9,13 @@ import {
   GraduationCap, 
   Save, 
   X, 
-  Settings, 
-  Bell, 
   Shield, 
   Plus, 
   LogOut, 
   Eye, 
-  EyeOff, 
-  Check,
+  EyeOff,
   BookOpen,
-  School,
-  GraduationCapIcon,
-  FileText
+  School
 } from 'lucide-react';
 import { userAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -74,25 +69,51 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
     const fetchProfile = async () => {
       try {
         const response = await userAPI.getProfile();
-        setProfileData(response.user || response);
+        // Handle both response formats: {user: {...}} or direct user object
+        const userData = response.user || response;
+        setProfileData({
+          name: userData.name || '',
+          email: userData.email || '',
+          secondarySchool: userData.secondarySchool,
+          secondarySchoolPassingYear: userData.secondarySchoolPassingYear,
+          secondarySchoolPercentage: userData.secondarySchoolPercentage,
+          higherSecondarySchool: userData.higherSecondarySchool,
+          higherSecondaryPassingYear: userData.higherSecondaryPassingYear,
+          higherSecondaryPercentage: userData.higherSecondaryPercentage,
+          universityName: userData.universityName,
+          universityPassingYear: userData.universityPassingYear,
+          universityPassingGPA: userData.universityPassingGPA,
+          bio: userData.bio,
+          avatarUrl: userData.avatarUrl,
+        });
       } catch (error) {
         console.error('Failed to fetch profile:', error);
+        // Fallback to auth user data if available
+        if (authUser) {
+          setProfileData({
+            name: authUser.name || '',
+            email: authUser.email || '',
+            bio: authUser.bio,
+            avatarUrl: authUser.avatarUrl,
+          });
+        }
       }
     };
 
     fetchProfile();
-  }, []);
+  }, [authUser]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // First update profile data
+      // Update profile data
       const response = await userAPI.updateProfile(profileData);
-      setProfileData(response.user || response);
+      const updatedUser = response.user || response;
+      setProfileData(updatedUser);
 
-      // Then upload avatar if a new file was selected
+      // Upload avatar if a new file was selected
       if (avatarFile) {
         const avatarResponse = await userAPI.uploadAvatar(avatarFile);
         setProfileData(prev => ({ ...prev, avatarUrl: avatarResponse.avatarUrl }));
@@ -103,6 +124,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
       setIsEditing(false);
       alert('Profile updated successfully!');
     } catch (error: any) {
+      console.error('Update profile error:', error);
       alert(error.message || 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -133,6 +155,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
         confirmPassword: ''
       });
     } catch (error: any) {
+      console.error('Password change error:', error);
       alert(error.message || 'Failed to change password. Please try again.');
     } finally {
       setIsLoading(false);
@@ -165,6 +188,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
       setAvatarPreview('');
       alert('Avatar removed successfully!');
     } catch (error: any) {
+      console.error('Remove avatar error:', error);
       alert(error.message || 'Failed to remove avatar. Please try again.');
     }
   };
@@ -182,6 +206,22 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
 
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 50 }, (_, i) => currentYear - i);
+
+  // Reset form when canceling edit
+  const handleCancelEdit = async () => {
+    setIsEditing(false);
+    setAvatarFile(null);
+    setAvatarPreview('');
+    
+    // Reload profile data to discard changes
+    try {
+      const response = await userAPI.getProfile();
+      const userData = response.user || response;
+      setProfileData(userData);
+    } catch (error) {
+      console.error('Failed to reload profile:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
@@ -257,17 +297,17 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
                 </div>
                 
                 <h2 className="text-xl font-bold text-gray-800 mb-1">
-                  {profileData.name}
+                  {profileData.name || 'No Name'}
                 </h2>
                 <p className="text-gray-600 mb-2">{profileData.email}</p>
                 {profileData.bio && (
-                  <p className="text-gray-600 text-sm mb-4">{profileData.bio}</p>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{profileData.bio}</p>
                 )}
                 
                 <div className="space-y-2 text-sm">
                   {profileData.universityName && (
                     <div className="flex items-center justify-center space-x-2 text-gray-600">
-                      <GraduationCapIcon className="h-4 w-4" />
+                      <GraduationCap className="h-4 w-4" />
                       <span>{profileData.universityName}</span>
                     </div>
                   )}
@@ -279,13 +319,22 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
                 <h3 className="text-sm font-semibold text-gray-800 mb-3">Academic Summary</h3>
                 <div className="space-y-2 text-xs text-gray-600">
                   {profileData.secondarySchool && (
-                    <p>🎓 {profileData.secondarySchool}</p>
+                    <div className="flex items-center space-x-1">
+                      <School className="h-3 w-3" />
+                      <span>{profileData.secondarySchool}</span>
+                    </div>
                   )}
                   {profileData.higherSecondarySchool && (
-                    <p>📚 {profileData.higherSecondarySchool}</p>
+                    <div className="flex items-center space-x-1">
+                      <BookOpen className="h-3 w-3" />
+                      <span>{profileData.higherSecondarySchool}</span>
+                    </div>
                   )}
                   {profileData.universityName && (
-                    <p>🏛️ {profileData.universityName}</p>
+                    <div className="flex items-center space-x-1">
+                      <GraduationCap className="h-3 w-3" />
+                      <span>{profileData.universityName}</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -510,7 +559,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
                     {/* University */}
                     <div>
                       <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
-                        <GraduationCapIcon className="h-5 w-5" />
+                        <GraduationCap className="h-5 w-5" />
                         <span>University / College</span>
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -605,15 +654,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
                       <div className="flex space-x-4 pt-6">
                         <button
                           type="button"
-                          onClick={() => {
-                            setIsEditing(false);
-                            setAvatarFile(null);
-                            setAvatarPreview('');
-                            // Reload profile data to discard changes
-                            userAPI.getProfile().then(response => {
-                              setProfileData(response.user || response);
-                            });
-                          }}
+                          onClick={handleCancelEdit}
                           className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium transition-all duration-200"
                         >
                           Cancel

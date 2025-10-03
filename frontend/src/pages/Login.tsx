@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Users, BookOpen, MessageSquare, Calendar } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { authAPI } from '../services/api';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -24,7 +26,7 @@ const Login = () => {
     setError('');
 
     try {
-      await login(formData.email, formData.password);
+      await login(formData.email, formData.password, rememberMe);
       navigate('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Login failed. Please check your credentials.');
@@ -43,18 +45,13 @@ const Login = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
     try {
-      // TODO: Implement forgot password API call
-      // await authAPI.forgotPassword(forgotEmail);
+      await authAPI.forgotPassword(forgotEmail);
       setResetSent(true);
-      setTimeout(() => {
-        setResetSent(false);
-        setShowForgotPassword(false);
-        setForgotEmail('');
-      }, 3000);
-    } catch (error) {
-      setError('Failed to send reset email. Please try again.');
+    } catch (error: any) {
+      setError(error.message || 'Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +104,7 @@ const Login = () => {
                 {resetSent && (
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
                     <p className="text-green-700 text-sm font-medium">
-                      Password reset link has been sent to your email!
+                      Password reset instructions have been sent to your email!
                     </p>
                   </div>
                 )}
@@ -123,7 +120,11 @@ const Login = () => {
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={() => setShowForgotPassword(false)}
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setError('');
+                      setResetSent(false);
+                    }}
                     className="text-blue-600 hover:text-blue-700 text-sm transition-colors font-medium"
                   >
                     Back to Sign In
@@ -179,6 +180,8 @@ const Login = () => {
                       id="remember-me"
                       name="remember-me"
                       type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 bg-gray-50 border-gray-300 rounded"
                     />
                     <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
