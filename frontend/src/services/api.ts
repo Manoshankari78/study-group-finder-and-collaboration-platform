@@ -2,7 +2,7 @@ const API_BASE_URL = 'http://localhost:8080/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   return {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
@@ -11,7 +11,7 @@ const getAuthHeaders = () => {
 
 // Helper function for file uploads
 const getAuthHeadersMultipart = () => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   return {
     'Authorization': `Bearer ${token}`,
   };
@@ -23,14 +23,11 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        ...getAuthHeaders(),
         ...options.headers,
       },
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error details:', errorText);
       throw new Error(`API error: ${response.status}`);
     }
 
@@ -86,6 +83,7 @@ export const authAPI = {
   updatePassword: async (currentPassword: string, newPassword: string) => {
     return apiCall('/auth/update-password', {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   },
@@ -96,12 +94,14 @@ export const userAPI = {
   getProfile: async () => {
     return apiCall('/user/profile', {
       method: 'GET',
+      headers: getAuthHeaders(),
     });
   },
 
   updateProfile: async (profileData: any) => {
     return apiCall('/user/profile', {
       method: 'PUT',
+      headers: getAuthHeaders(),
       body: JSON.stringify(profileData),
     });
   },
@@ -110,13 +110,9 @@ export const userAPI = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const token = localStorage.getItem('token');
-    
     const response = await fetch(`${API_BASE_URL}/user/upload-avatar`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: getAuthHeadersMultipart(),
       body: formData,
     });
 
@@ -130,13 +126,15 @@ export const userAPI = {
   removeAvatar: async () => {
     return apiCall('/user/remove-avatar', {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
   },
 };
 
-// Mock data for other features
+// Mock data for other features (to be implemented later)
 export const groupsAPI = {
   getGroups: async () => {
+    // TODO: Implement actual API call
     return new Promise(resolve => setTimeout(() => resolve({
       groups: [
         {
@@ -149,6 +147,7 @@ export const groupsAPI = {
           maxMembers: 15,
           tags: ['Beginner Friendly', 'Problem Solving', 'Weekly Meetings']
         },
+        // ... more groups
       ]
     }), 1000));
   },
@@ -156,9 +155,11 @@ export const groupsAPI = {
 
 export const coursesAPI = {
   getCourses: async () => {
+    // TODO: Implement actual API call
     return new Promise(resolve => setTimeout(() => resolve({
       courses: [
         { id: 1, code: 'CS 101', name: 'Introduction to Computer Science', credits: 3, department: 'Computer Science' },
+        // ... more courses
       ]
     }), 1000));
   },

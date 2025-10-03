@@ -40,6 +40,8 @@ public class User {
     private String universityName;
     private Integer universityPassingYear;
     private Float universityPassingGPA;
+    private String avatarUrl;
+    private String bio;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -108,5 +110,11 @@ public class User {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
 }

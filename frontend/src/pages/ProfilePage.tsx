@@ -205,7 +205,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
   ];
 
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 50 }, (_, i) => currentYear - i);
+  const yearOptions = Array.from({ length: 61 }, (_, i) => currentYear - 50 + i);
 
   // Reset form when canceling edit
   const handleCancelEdit = async () => {
