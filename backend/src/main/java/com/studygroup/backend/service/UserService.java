@@ -5,6 +5,7 @@ import com.studygroup.backend.entity.User;
 import com.studygroup.backend.repository.PasswordResetTokenRepository;
 import com.studygroup.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,11 +97,29 @@ public class UserService {
     public void initiatePasswordReset(String email) {
         User user = findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        passwordResetTokenRepository.findByUser(user).ifPresent(passwordResetTokenRepository::delete);
+        passwordResetTokenRepository.deleteExpiredTokens();
+        String token = UUID.randomUUID().toString();
 
-        String resetToken = UUID.randomUUID().toString();
-        createPasswordResetToken(user, resetToken);
+        int maxRetries = 3;
+        int retryCount = 0;
 
-        emailService.sendPasswordResetEmail(email, resetToken);
+        while (retryCount < maxRetries) {
+            try {
+                PasswordResetToken resetToken = new PasswordResetToken(token, user);
+                passwordResetTokenRepository.save(resetToken);
+                break;
+            } catch (DataIntegrityViolationException e) {
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    throw new RuntimeException("Failed to generate unique token after " + maxRetries + " attempts");
+                }
+                // Generate new token and retry
+                token = UUID.randomUUID().toString();
+            }
+        }
+
+        emailService.sendPasswordResetEmail(email, token);
     }
 
     public User updateUserProfile(Long userId, User userDetails) {

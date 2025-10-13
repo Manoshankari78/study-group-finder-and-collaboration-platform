@@ -163,21 +163,6 @@ const Register = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Profile Picture (Optional)
-              </label>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-gray-200 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-2 pb-2">
-                    <Upload className="w-6 h-6 mb-1 text-gray-400" />
-                    <p className="text-xs text-gray-500">Upload Avatar</p>
-                  </div>
-                  <input type="file" className="hidden" accept="image/*" />
-                </label>
-              </div>
-            </div>
-
             <div className="flex items-center">
               <input
                 id="remember-me-register"

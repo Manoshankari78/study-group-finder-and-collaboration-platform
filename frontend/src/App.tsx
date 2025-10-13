@@ -12,6 +12,8 @@ import Calendar from './pages/Calendar';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilePage from './pages/ProfilePage';
 import ResetPassword from './pages/ResetPassword';
+import CoursePeers from './pages/CoursePeers';
+import CourseSpecificPeers from './pages/CourseSpecificPeers';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -130,6 +132,21 @@ function AppContent() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/peers" 
+            element={
+              <ProtectedRoute>
+                <CoursePeers onLogout={logout} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/courses/:courseId/peers" 
+            element={
+              <ProtectedRoute>
+                <CourseSpecificPeers onLogout={logout} />
+              </ProtectedRoute>
+            } />
           <Route 
             path="/reset-password" 
             element={

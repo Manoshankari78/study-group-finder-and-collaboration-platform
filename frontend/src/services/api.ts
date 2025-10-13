@@ -153,14 +153,60 @@ export const groupsAPI = {
   },
 };
 
+// Course API calls
 export const coursesAPI = {
-  getCourses: async () => {
-    // TODO: Implement actual API call
-    return new Promise(resolve => setTimeout(() => resolve({
-      courses: [
-        { id: 1, code: 'CS 101', name: 'Introduction to Computer Science', credits: 3, department: 'Computer Science' },
-        // ... more courses
-      ]
-    }), 1000));
+  // Get all courses with optional search
+  getCourses: async (search?: string) => {
+    const url = search ? `/courses?search=${encodeURIComponent(search)}` : '/courses';
+    return apiCall(url, {
+      method: 'GET',
+    });
+  },
+  getCourse: async (courseId: number) => {
+  return apiCall(`/courses/${courseId}`, {
+    method: 'GET',
+    headers: getAuthHeaders()
+  });
+},
+
+  // Get user's enrolled courses
+  getMyCourses: async () => {
+    return apiCall('/courses/my-courses', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Enroll in a course
+  enrollInCourse: async (courseId: number) => {
+    return apiCall(`/courses/${courseId}/enroll`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Unenroll from a course
+  unenrollFromCourse: async (courseId: number) => {
+    return apiCall(`/courses/${courseId}/unenroll`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+  },
+
+  // Get peers in same courses
+  getCoursePeers: async () => {
+    return apiCall('/courses/peers', {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+  },
+
+  // Get peers in specific course
+  getPeersInCourse: async (courseId: number) => {
+    
+    return apiCall(`/courses/${courseId}/peers`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
   },
 };

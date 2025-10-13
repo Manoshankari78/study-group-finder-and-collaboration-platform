@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Home, BookOpen, Users, MessageSquare, Calendar, LogOut, User, Settings, Plus } from 'lucide-react';
+import { Bell, Home, BookOpen, Users, MessageSquare, Calendar, LogOut, User, Settings, Plus, Contact } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
@@ -24,6 +24,7 @@ const Navbar = ({ onLogout }: NavbarProps) => {
   const navItems = [
     { path: '/dashboard', label: 'Home', icon: Home },
     { path: '/courses', label: 'Courses', icon: BookOpen },
+    { path: '/peers', label: 'Peers', icon: Contact },
     { path: '/groups', label: 'Groups', icon: Users },
     { path: '/chat', label: 'Chat', icon: MessageSquare },
     { path: '/calendar', label: 'Calendar', icon: Calendar },
@@ -69,7 +70,7 @@ const Navbar = ({ onLogout }: NavbarProps) => {
             {/* Right side */}
             <div className="flex items-center space-x-4">
               {/* Notifications */}
-              <Link
+              {/* <Link
                 to="/notifications"
                 className="relative p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 transform hover:scale-105"
               >
@@ -79,7 +80,7 @@ const Navbar = ({ onLogout }: NavbarProps) => {
                     {unreadCount}
                   </span>
                 )}
-              </Link>
+              </Link> */}
               
               {/* Profile */}
               <Link

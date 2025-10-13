@@ -1,40 +1,114 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import { BookOpen, Plus, Minus, Search } from 'lucide-react';
+import { BookOpen, Plus, Minus, Search, Loader } from 'lucide-react';
+import { coursesAPI } from '../services/api';
 
 interface CourseManagementProps {
   onLogout: () => void;
 }
 
+interface Course {
+  id: number;
+  courseCode: string;
+  courseName: string;
+  credits: number;
+  department: string;
+  description?: string;
+}
+
 const CourseManagement = ({ onLogout }: CourseManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCourses, setSelectedCourses] = useState([1, 3, 5]);
+  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEnrolling, setIsEnrolling] = useState<number | null>(null);
 
-  const availableCourses = [
-    { id: 1, code: 'CS 101', name: 'Introduction to Computer Science', credits: 3, department: 'Computer Science' },
-    { id: 2, code: 'MATH 201', name: 'Calculus I', credits: 4, department: 'Mathematics' },
-    { id: 3, code: 'PHYS 101', name: 'General Physics I', credits: 4, department: 'Physics' },
-    { id: 4, code: 'CHEM 101', name: 'General Chemistry', credits: 3, department: 'Chemistry' },
-    { id: 5, code: 'ENG 102', name: 'English Composition', credits: 3, department: 'English' },
-    { id: 6, code: 'CS 201', name: 'Data Structures', credits: 3, department: 'Computer Science' },
-    { id: 7, code: 'MATH 202', name: 'Calculus II', credits: 4, department: 'Mathematics' },
-    { id: 8, code: 'PHYS 102', name: 'General Physics II', credits: 4, department: 'Physics' },
-  ];
+  // Fetch courses on component mount
+  useEffect(() => {
+    fetchCourses();
+    fetchEnrolledCourses();
+  }, []);
 
-  const filteredCourses = availableCourses.filter(course =>
-    course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const toggleCourse = (courseId: number) => {
-    setSelectedCourses(prev =>
-      prev.includes(courseId)
-        ? prev.filter(id => id !== courseId)
-        : [...prev, courseId]
-    );
+  const fetchCourses = async (search?: string) => {
+    try {
+      const response = await coursesAPI.getCourses(search);
+      setAvailableCourses(response.courses || []);
+    } catch (error) {
+      console.error('Failed to fetch courses:', error);
+      alert('Failed to load courses');
+    }
   };
 
-  const mySelectedCourses = availableCourses.filter(course => selectedCourses.includes(course.id));
+  const fetchEnrolledCourses = async () => {
+    try {
+      const response = await coursesAPI.getMyCourses();
+      setEnrolledCourses(response.courses || []);
+    } catch (error) {
+      console.error('Failed to fetch enrolled courses:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    fetchCourses(value);
+  };
+
+  const enrollInCourse = async (courseId: number) => {
+    setIsEnrolling(courseId);
+    try {
+      
+      await coursesAPI.enrollInCourse(courseId);
+      // Refresh both lists
+      await fetchCourses(searchTerm);
+      await fetchEnrolledCourses();
+    } catch (error: any) {
+      console.error('Enrollment failed:', error);
+      alert(error.message || 'Failed to enroll in course');
+    } finally {
+      setIsEnrolling(null);
+    }
+  };
+
+  const unenrollFromCourse = async (courseId: number) => {
+    setIsEnrolling(courseId);
+    try {
+      await coursesAPI.unenrollFromCourse(courseId);
+      // Refresh both lists
+      await fetchCourses(searchTerm);
+      await fetchEnrolledCourses();
+    } catch (error: any) {
+      console.error('Unenrollment failed:', error);
+      alert(error.message || 'Failed to unenroll from course');
+    } finally {
+      setIsEnrolling(null);
+    }
+  };
+
+  const isCourseEnrolled = (courseId: number) => {
+    return enrolledCourses.some(course => course.id === courseId);
+  };
+
+  const filteredCourses = availableCourses.filter(course =>
+    course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.department.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
+        <Navbar onLogout={onLogout} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <Loader className="h-8 w-8 animate-spin text-blue-500" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
@@ -54,28 +128,33 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg mb-8">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-800 font-inter">My Courses</h2>
-            <p className="text-gray-600 text-sm">Currently enrolled: {selectedCourses.length} courses</p>
+            <p className="text-gray-600 text-sm">Currently enrolled: {enrolledCourses.length} courses</p>
           </div>
           <div className="p-6">
-            {mySelectedCourses.length === 0 ? (
+            {enrolledCourses.length === 0 ? (
               <div className="text-center py-8">
                 <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No courses selected yet. Browse available courses below.</p>
+                <p className="text-gray-600">No courses enrolled yet. Browse available courses below.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mySelectedCourses.map((course) => (
+                {enrolledCourses.map((course) => (
                   <div key={course.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-semibold text-gray-800">{course.code}</h3>
-                        <p className="text-gray-600 text-sm">{course.name}</p>
+                        <h3 className="font-semibold text-gray-800">{course.courseCode}</h3>
+                        <p className="text-gray-600 text-sm">{course.courseName}</p>
                       </div>
                       <button
-                        onClick={() => toggleCourse(course.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white p-1 rounded transition-colors"
+                        onClick={() => unenrollFromCourse(course.id)}
+                        disabled={isEnrolling === course.id}
+                        className="bg-red-500 hover:bg-red-600 text-white p-1 rounded transition-colors disabled:opacity-50"
                       >
-                        <Minus className="h-4 w-4" />
+                        {isEnrolling === course.id ? (
+                          <Loader className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Minus className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                     <div className="flex items-center justify-between text-sm text-gray-500">
@@ -101,9 +180,9 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
-                placeholder="Search courses..."
+                placeholder="Search courses by name, code, or department..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearch}
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               />
             </div>
@@ -112,30 +191,42 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCourses.map((course) => {
-                const isSelected = selectedCourses.includes(course.id);
+                const isEnrolled = isCourseEnrolled(course.id);
+                const isProcessing = isEnrolling === course.id;
+                
                 return (
                   <div
                     key={course.id}
                     className={`rounded-xl p-4 border transition-all duration-200 ${
-                      isSelected
+                      isEnrolled
                         ? 'bg-blue-50 border-blue-500'
                         : 'bg-gray-50 border-gray-200 hover:border-blue-500'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-semibold text-gray-800">{course.code}</h3>
-                        <p className="text-gray-600 text-sm">{course.name}</p>
+                        <h3 className="font-semibold text-gray-800">{course.courseCode}</h3>
+                        <p className="text-gray-600 text-sm">{course.courseName}</p>
+                        {course.description && (
+                          <p className="text-gray-500 text-xs mt-1 line-clamp-2">{course.description}</p>
+                        )}
                       </div>
                       <button
-                        onClick={() => toggleCourse(course.id)}
-                        className={`p-1 rounded transition-colors ${
-                          isSelected
+                        onClick={() => isEnrolled ? unenrollFromCourse(course.id) : enrollInCourse(course.id)}
+                        disabled={isProcessing}
+                        className={`p-1 rounded transition-colors disabled:opacity-50 ${
+                          isEnrolled
                             ? 'bg-red-500 hover:bg-red-600 text-white'
                             : 'bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white'
                         }`}
                       >
-                        {isSelected ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        {isProcessing ? (
+                          <Loader className="h-4 w-4 animate-spin" />
+                        ) : isEnrolled ? (
+                          <Minus className="h-4 w-4" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                     <div className="flex items-center justify-between text-sm text-gray-500">
@@ -150,7 +241,9 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
             {filteredCourses.length === 0 && (
               <div className="text-center py-8">
                 <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No courses found matching your search.</p>
+                <p className="text-gray-600">
+                  {searchTerm ? 'No courses found matching your search.' : 'No courses available.'}
+                </p>
               </div>
             )}
           </div>
