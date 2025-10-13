@@ -28,7 +28,8 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
 
     return await response.json();
@@ -117,7 +118,8 @@ export const userAPI = {
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Upload failed: ${response.status}`);
     }
 
     return await response.json();
@@ -131,28 +133,6 @@ export const userAPI = {
   },
 };
 
-// Mock data for other features (to be implemented later)
-export const groupsAPI = {
-  getGroups: async () => {
-    // TODO: Implement actual API call
-    return new Promise(resolve => setTimeout(() => resolve({
-      groups: [
-        {
-          id: 1,
-          name: 'CS 101 Study Warriors',
-          description: 'Focused study group for mastering computer science fundamentals.',
-          course: 'CS 101',
-          privacy: 'public',
-          members: 12,
-          maxMembers: 15,
-          tags: ['Beginner Friendly', 'Problem Solving', 'Weekly Meetings']
-        },
-        // ... more groups
-      ]
-    }), 1000));
-  },
-};
-
 // Course API calls
 export const coursesAPI = {
   // Get all courses with optional search
@@ -162,12 +142,13 @@ export const coursesAPI = {
       method: 'GET',
     });
   },
+  
   getCourse: async (courseId: number) => {
-  return apiCall(`/courses/${courseId}`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  });
-},
+    return apiCall(`/courses/${courseId}`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+  },
 
   // Get user's enrolled courses
   getMyCourses: async () => {
@@ -203,10 +184,120 @@ export const coursesAPI = {
 
   // Get peers in specific course
   getPeersInCourse: async (courseId: number) => {
-    
     return apiCall(`/courses/${courseId}/peers`, {
       method: 'GET',
       headers: getAuthHeaders()
+    });
+  },
+};
+
+// Groups API calls
+export const groupsAPI = {
+  // Get all groups with optional search and course filter
+  getGroups: async (search?: string, courseId?: number) => {
+    let url = '/groups';
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (courseId) params.append('courseId', courseId.toString());
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    return apiCall(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Get group by ID
+  getGroup: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Create new group
+  createGroup: async (groupData: any) => {
+    return apiCall('/groups', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(groupData),
+    });
+  },
+
+  // Update group
+  updateGroup: async (groupId: number, groupData: any) => {
+    return apiCall(`/groups/${groupId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(groupData),
+    });
+  },
+
+  // Delete group
+  deleteGroup: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Get user's groups
+  getMyGroups: async () => {
+    return apiCall('/groups/my-groups', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Get recommended groups
+  getRecommendedGroups: async () => {
+    return apiCall('/groups/recommended', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Join group
+  joinGroup: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}/join`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Leave group
+  leaveGroup: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}/leave`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Get group members
+  getGroupMembers: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}/members`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Get pending join requests
+  getPendingRequests: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}/pending-requests`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // Handle join request (approve/reject)
+  handleJoinRequest: async (groupId: number, userId: number, status: string) => {
+    return apiCall(`/groups/${groupId}/requests/${userId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
     });
   },
 };

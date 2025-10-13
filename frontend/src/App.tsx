@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage';
 import ResetPassword from './pages/ResetPassword';
 import CoursePeers from './pages/CoursePeers';
 import CourseSpecificPeers from './pages/CourseSpecificPeers';
+import GroupMembers from './pages/GroupMembers';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,6 +98,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <GroupDetail onLogout={logout} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/groups/:id/members" 
+            element={
+              <ProtectedRoute>
+                <GroupMembers onLogout={logout} />
               </ProtectedRoute>
             } 
           />

@@ -13,11 +13,13 @@ interface Group {
   id: number;
   name: string;
   description: string;
-  course?: string;
-  members: number;
+  course?: {
+    courseCode: string;
+    courseName: string;
+  };
+  currentMembers: number;
   maxMembers?: number;
   privacy: string;
-  lastActivity?: string;
 }
 
 interface Course {
@@ -78,7 +80,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
       try {
         setIsLoading(true);
         
-        
         const coursesResponse = await coursesAPI.getMyCourses();
         const enrolledCourses = coursesResponse.courses || [];
         
@@ -86,42 +87,8 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         const peers = peersResponse.peers || [];
         setCoursePeers(peers.slice(0, 4)); // Show only 4 peers in dashboard
         
-        
-        const groupsResponse = await groupsAPI.getGroups();
-        // const groups = groupsResponse.groups || [];
-        const groups = [
-        {
-          id: 1,
-          name: 'CS 101 Study Warriors',
-          description: 'Focused study group for mastering computer science fundamentals.',
-          course: 'CS 101',
-          privacy: 'public',
-          members: 12,
-          maxMembers: 15,
-          tags: ['Beginner Friendly', 'Problem Solving', 'Weekly Meetings']
-        },
-        {
-          id: 2,
-          name: 'ENG 102 Elites',
-          description: 'Focused study group for mastering english speaking.',
-          course: 'ENG 102',
-          privacy: 'private',
-          members: 9,
-          maxMembers: 15,
-          tags: ['Beginner Friendly', 'Collaboration', 'Daily Updates']
-        },
-        {
-          id: 3,
-          name: 'CS 201 Coders Club',
-          description: 'Focused study group for mastering DSA.',
-          course: 'CS 201',
-          privacy: 'public',
-          members: 15,
-          maxMembers: 15,
-          tags: ['Collaboration', 'Daily Quizes', 'Weekend Sessions']
-        },
-        // ... more groups
-      ];
+        const groupsResponse = await groupsAPI.getMyGroups();
+        const groups = groupsResponse.groups || [];
         setJoinedGroups(groups.slice(0, 3)); 
         
         // Calculate stats
@@ -134,7 +101,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
         
         generateRecentActivity(peers, groups, enrolledCourses);
-        
         
         generateUpcomingEvents();
 
@@ -192,7 +158,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const generateUpcomingEvents = () => {
-    
     const events: Event[] = [
       { id: 1, title: 'Study Session', time: 'Today, 7:00 PM', group: 'Study Group' },
       { id: 2, title: 'Group Meeting', time: 'Tomorrow, 3:00 PM', group: 'Course Discussion' },
@@ -363,12 +328,12 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                           <div className="flex items-center space-x-4 text-sm text-gray-500">
                             <span className="flex items-center space-x-1">
                               <Users className="h-4 w-4" />
-                              <span>{group.members} members</span>
+                              <span>{group.currentMembers} members</span>
                             </span>
-                            {group.lastActivity && (
+                            {group.course && (
                               <span className="flex items-center space-x-1">
-                                <Clock className="h-4 w-4" />
-                                <span>{group.lastActivity}</span>
+                                <BookOpen className="h-4 w-4" />
+                                <span>{group.course.courseCode}</span>
                               </span>
                             )}
                           </div>
@@ -388,29 +353,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
           {/* Right Sidebar */}
           <div className="space-y-6">
-            {/* Upcoming Events */}
-            {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-800 font-inter">Upcoming Events</h2>
-              </div>
-              <div className="p-6 space-y-4">
-                {upcomingEvents.length === 0 ? (
-                  <div className="text-center py-4">
-                    <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No upcoming events</p>
-                  </div>
-                ) : (
-                  upcomingEvents.map((event) => (
-                    <div key={event.id} className="bg-gradient-to-r from-blue-50 to-teal-50 rounded-xl p-4 border border-blue-100">
-                      <h3 className="font-semibold text-gray-800 mb-1">{event.title}</h3>
-                      <p className="text-blue-600 text-sm font-medium mb-1">{event.time}</p>
-                      <p className="text-gray-500 text-xs">{event.group}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div> */}
-
             {/* Course Peers */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
               <div className="p-6 border-b border-gray-100">
