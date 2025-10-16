@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Users, Crown, UserPlus, Mail, Loader } from 'lucide-react';
+import { Users, Crown, UserPlus, Mail, Loader, User, ArrowLeft } from 'lucide-react';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import toast, { Toaster } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 interface GroupMembersProps {
   onLogout: () => void;
@@ -22,6 +24,7 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
   const [members, setMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -55,16 +58,29 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
     }
   };
 
-  const handleRemoveMember = async (userId: number) => {
-    if (!confirm('Are you sure you want to remove this member?')) return;
+const handleRemoveMember = async (userId: number) => {
+  const confirmed = await new Promise((resolve) => {
+    toast(t => (
+      <div className='flex flex-col gap-2 justify-between'>
+        Are you sure you want to remove this member? 
+        <div className='flex items-center justify-evenly'>
+          <button onClick={() => { resolve(true); toast.dismiss(t.id); }} className="text-red-600">Yes</button>
+          <button onClick={() => { resolve(false); toast.dismiss(t.id); }}>No</button>
+        </div>
+      </div>
+    ), { duration: Infinity });
+  });
 
-    try {
-      // Note: You might need to implement a remove member endpoint
-      alert('Remove member functionality to be implemented');
-    } catch (error: any) {
-      alert(error.message || 'Failed to remove member');
-    }
-  };
+  if (!confirmed) return;
+
+  try {
+    await groupsAPI.removeMember(parseInt(id!), userId);
+    toast.success('Member removed successfully');
+    fetchGroupMembers(); // Refresh the members list
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to remove member');
+  }
+};
 
   if (isLoading) {
     return (
@@ -82,8 +98,18 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       <Navbar onLogout={onLogout} />
+        
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <Link
+            to={`/groups/${id}`}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span>Back to Groups</span>
+          </Link>
+        </div>
         <div className="mb-8">
           <h1 className="text-3xl font-bold font-inter bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-2">
             Group Members
@@ -91,6 +117,7 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
           <p className="text-gray-600">
             Manage group members and permissions
           </p>
+          
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg">
@@ -100,7 +127,7 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
                 Members ({members.length})
               </h2>
               {isAdmin && (
-                <button className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2">
+                <button  onClick={() => setShowInviteModal(true)} className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2">
                   <UserPlus className="h-4 w-4" />
                   <span>Invite Member</span>
                 </button>
@@ -113,8 +140,16 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <div className="flex items-center space-x-4">
-                    <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-3 rounded-xl">
-                      <Users className="h-5 w-5 text-white" />
+                    <div className="bg-gradient-to-r from-blue-500 to-teal-500 rounded-full">
+                      {member.avatarUrl?
+                      <div className='h-10 w-10'>
+                        <img src={member.avatarUrl} className='h-full w-full rounded-full object-cover'/>
+                      </div>
+                          : 
+                          <div className='p-3'>
+                            <User className='h-5 w-5 text-white'/>
+                          </div>  
+                    }
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
@@ -123,10 +158,10 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
                           <Crown className="h-4 w-4 text-yellow-500" />
                         )}
                       </div>
-                      <p className="text-gray-600 text-sm flex items-center space-x-1">
-                        <Mail className="h-3 w-3" />
-                        <span>{member.email}</span>
-                      </p>
+                      <div className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{member.email}</p>
+                        </div>
                     </div>
                   </div>
 
@@ -135,8 +170,7 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
                       <button
                         onClick={() => handleRemoveMember(member.id)}
                         className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Remove
+                      > X
                       </button>
                     </div>
                   )}
@@ -153,7 +187,39 @@ const GroupMembers = ({ onLogout }: GroupMembersProps) => {
             )}
           </div>
         </div>
+        {/* Invite Member Modal */}
+        {showInviteModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl border border-gray-200 max-w-md w-full p-6 shadow-xl">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 font-inter">Invite Member</h2>
+
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  Share this group link with others to invite them to join:
+                </p>
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <code className="text-sm text-gray-800 break-all">
+                    {window.location.origin}/groups/{id}
+                  </code>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Users can request to join this group through the group discovery page.
+                </p>
+              </div>
+
+              <div className="flex space-x-4 pt-6">
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-xl font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      <Toaster/>
     </div>
   );
 };

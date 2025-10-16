@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -243,6 +244,47 @@ public class GroupController {
                     "message", "Join request " + action + " successfully",
                     "member", updatedMember
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{groupId}/my-membership")
+    public ResponseEntity<?> getMyMembership(@AuthenticationPrincipal UserDetails userDetails,
+                                             @PathVariable Long groupId) {
+        try {
+            User user = userService.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            GroupMember membership = groupService.getUserMembershipStatus(user.getId(), groupId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Membership status retrieved successfully");
+            if (membership != null) {
+                response.put("membership", membership);
+                response.put("status", membership.getStatus());
+                response.put("role", membership.getRole());
+            } else {
+                response.put("membership", null);
+                response.put("status", "NOT_MEMBER");
+            }
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    @DeleteMapping("/{groupId}/members/{userId}")
+    public ResponseEntity<?> removeMember(@AuthenticationPrincipal UserDetails userDetails,
+                                          @PathVariable Long groupId,
+                                          @PathVariable Long userId) {
+        try {
+            User adminUser = userService.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            groupService.removeMember(groupId, userId, adminUser.getId());
+
+            return ResponseEntity.ok(Map.of("message", "Member removed successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

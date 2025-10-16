@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Users, ArrowLeft, Globe, Lock, Loader } from 'lucide-react';
 import { groupsAPI, coursesAPI } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
-interface GroupCreationProps {
+interface GroupEditProps {
   onLogout: () => void;
 }
 
@@ -15,22 +15,59 @@ interface Course {
   courseName: string;
 }
 
-const GroupCreation = ({ onLogout }: GroupCreationProps) => {
+interface Group {
+  id: number;
+  name: string;
+  description: string;
+  course: {
+    id: number;
+    courseCode: string;
+    courseName: string;
+  };
+  privacy: string;
+  maxMembers: number;
+  currentMembers: number;
+}
+
+const GroupEdit = ({ onLogout }: GroupEditProps) => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
-    course: { id: 0 },
     description: '',
     privacy: 'PUBLIC',
     maxMembers: 10
   });
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCoursesLoading, setIsCoursesLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [group, setGroup] = useState<Group | null>(null);
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    if (id) {
+      fetchGroupData();
+      fetchCourses();
+    }
+  }, [id]);
+
+  const fetchGroupData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await groupsAPI.getGroup(parseInt(id!));
+      setGroup(response.group);
+      setFormData({
+        name: response.group.name,
+        description: response.group.description,
+        privacy: response.group.privacy,
+        maxMembers: response.group.maxMembers
+      });
+    } catch (error) {
+      console.error('Failed to fetch group:', error);
+      alert('Failed to load group details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -38,31 +75,27 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
       setCourses(response.courses || []);
     } catch (error) {
       console.error('Failed to fetch courses:', error);
-    } finally {
-      setIsCoursesLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.course.id) {
-      alert('Please select a course');
+    if (!formData.name.trim()) {
+      alert('Group name is required');
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
-      await groupsAPI.createGroup(formData);
-      // alert('Group created successfully!');
-      toast.success("Group created successfully!");
-      navigate('/groups');
+      await groupsAPI.updateGroup(parseInt(id!), formData);
+      toast.success('Group updated successfully!');
+      navigate(`/groups/${id}`);
     } catch (error: any) {
-      //alert(error.message || 'Failed to create group');
-      toast.error(error.message || "Failed to create group");
+      alert(error.message || 'Failed to update group');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -70,17 +103,22 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'maxMembers' ? parseInt(value) : value
     }));
   };
 
-  const handleCourseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const courseId = parseInt(e.target.value);
-    setFormData(prev => ({
-      ...prev,
-      course: { id: courseId }
-    }));
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
+        <Navbar onLogout={onLogout} />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex justify-center items-center h-64">
+            <Loader className="h-8 w-8 animate-spin text-blue-500" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
@@ -89,17 +127,17 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <button
-            onClick={() => navigate('/groups')}
+            onClick={() => navigate(`/groups/${id}`)}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4"
           >
             <ArrowLeft className="h-5 w-5" />
-            <span>Back to Groups</span>
+            <span>Back to Group</span>
           </button>
           <h1 className="text-3xl font-bold font-inter bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-2">
-            Create Study Group
+            Edit Study Group
           </h1>
           <p className="text-gray-600 font-roboto">
-            Start a new study group and connect with fellow learners.
+            Update your study group information and settings.
           </p>
         </div>
 
@@ -126,39 +164,6 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
                       className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       placeholder="Enter group name"
                     />
-                  </div>
-
-                  <div>
-                    <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-2">
-                      Course *
-                    </label>
-                    {isCoursesLoading ? (
-                      <div className="flex items-center space-x-2 text-gray-500">
-                        <Loader className="h-4 w-4 animate-spin" />
-                        <span>Loading courses...</span>
-                      </div>
-                    ) : (
-                      <select
-                        id="course"
-                        name="course"
-                        required
-                        value={formData.course.id}
-                        onChange={handleCourseChange}
-                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      >
-                        <option value="">Select a course</option>
-                        {courses.map(course => (
-                          <option key={course.id} value={course.id}>
-                            {course.courseCode} - {course.courseName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {courses.length === 0 && !isCoursesLoading && (
-                      <p className="text-sm text-orange-600 mt-1">
-                        You need to be enrolled in courses to create groups. <a href="/courses" className="text-blue-500 hover:underline">Enroll in courses first</a>.
-                      </p>
-                    )}
                   </div>
 
                   <div>
@@ -233,11 +238,14 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
                       type="number"
                       id="maxMembers"
                       name="maxMembers"
-                      min="2"
+                      min={group?.currentMembers || 1}
                       value={formData.maxMembers}
                       onChange={handleChange}
                       className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Current members: {group?.currentMembers || 0}. Minimum must be at least current member count.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -245,53 +253,31 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
               <div className="flex space-x-4 pt-6">
                 <button
                   type="button"
-                  onClick={() => navigate('/groups')}
+                  onClick={() => navigate(`/groups/${id}`)}
                   className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 px-4 rounded-xl font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || courses.length === 0}
+                  disabled={isSubmitting}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white py-3 px-4 rounded-xl font-medium transition-colors transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  {isLoading ? (
+                  {isSubmitting ? (
                     <>
                       <Loader className="h-5 w-5 animate-spin mr-2" />
-                      Creating...
+                      Updating...
                     </>
                   ) : (
-                    'Create Group'
+                    'Update Group'
                   )}
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Preview/Tips */}
+          {/* Preview */}
           <div className="space-y-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 font-inter">Tips for Success</h3>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start space-x-2">
-                  <div className="bg-blue-500 rounded-full w-2 h-2 mt-2 flex-shrink-0"></div>
-                  <span>Choose a clear, descriptive name that reflects your group's focus</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <div className="bg-blue-500 rounded-full w-2 h-2 mt-2 flex-shrink-0"></div>
-                  <span>Write a detailed description of your study goals and methods</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <div className="bg-blue-500 rounded-full w-2 h-2 mt-2 flex-shrink-0"></div>
-                  <span>Set appropriate privacy settings based on your needs</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <div className="bg-blue-500 rounded-full w-2 h-2 mt-2 flex-shrink-0"></div>
-                  <span>Start with a reasonable member limit and adjust as needed</span>
-                </li>
-              </ul>
-            </div>
-
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4 font-inter">Group Preview</h3>
               <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -304,7 +290,7 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
                       {formData.name || 'Your Group Name'}
                     </h4>
                     <p className="text-gray-600 text-sm">
-                      {courses.find(c => c.id === formData.course.id)?.courseCode || 'Selected Course'}
+                      {group?.course.courseCode || 'Course'}
                     </p>
                   </div>
                 </div>
@@ -314,7 +300,7 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-2 text-gray-500">
                     <Users className="h-4 w-4" />
-                    <span>1/{formData.maxMembers} members</span>
+                    <span>{group?.currentMembers || 0}/{formData.maxMembers} members</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     {formData.privacy === 'PUBLIC' ? (
@@ -335,4 +321,4 @@ const GroupCreation = ({ onLogout }: GroupCreationProps) => {
   );
 };
 
-export default GroupCreation;
+export default GroupEdit;

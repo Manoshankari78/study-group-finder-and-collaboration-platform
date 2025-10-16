@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Users, Calendar, MessageSquare, Settings, Crown, UserPlus, Globe, Lock, ArrowLeft, Loader } from 'lucide-react';
+import { Users, Calendar, MessageSquare, Settings, Crown, UserPlus, Globe, Lock, ArrowLeft, Loader, User, Mail } from 'lucide-react';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface GroupDetailProps {
   onLogout: () => void;
@@ -54,19 +55,28 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<GroupMember[]>([]);
+  const [userMembershipStatus, setUserMembershipStatus] = useState<string>('');
 
   useEffect(() => {
     if (id) {
       fetchGroupData();
-      fetchGroupMembers();
-      checkUserMembership();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (isAdmin && id) {
+      fetchPendingRequests();
+    }
+  }, [isAdmin, id]);
 
   const fetchGroupData = async () => {
     try {
       const response = await groupsAPI.getGroup(parseInt(id!));
       setGroup(response.group);
+      
+      await checkUserMembership(response.group);
+      
+      await fetchGroupMembers();
     } catch (error) {
       console.error('Failed to fetch group:', error);
       alert('Failed to load group details');
@@ -84,25 +94,30 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
     }
   };
 
-  const checkUserMembership = async () => {
-    try {
-      const response = await groupsAPI.getMyGroups();
-      const myGroups = response.groups || [];
-      const currentGroup = myGroups.find((g: Group) => g.id === parseInt(id!));
+  const checkUserMembership = async (groupData?: Group) => {
+  try {
+    const response = await groupsAPI.getMyMembership(parseInt(id!));
+    
+    if (response.membership) {
+      setIsJoined(true);
+      setUserMembershipStatus(response.membership.status);
       
-      if (currentGroup) {
-        setIsJoined(true);
-        // Check if current user is admin (you might need to enhance this logic)
-        setIsAdmin(currentUser?.id === currentGroup.createdBy.id);
-        
-        if (isAdmin) {
-          fetchPendingRequests();
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check membership:', error);
+      // Check if user is admin
+      const userIsAdmin = response.membership.role === 'ADMIN';
+      setIsAdmin(userIsAdmin);
+    } else {
+      setIsJoined(false);
+      setUserMembershipStatus('');
+      setIsAdmin(false);
     }
-  };
+  } catch (error) {
+    console.error('Failed to check membership:', error);
+    setIsJoined(false);
+    setUserMembershipStatus('');
+    setIsAdmin(false);
+  }
+};
+
 
   const fetchPendingRequests = async () => {
     try {
@@ -110,34 +125,52 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
       setPendingRequests(response.requests || []);
     } catch (error) {
       console.error('Failed to fetch pending requests:', error);
+      setIsAdmin(false);
     }
   };
 
   const handleJoinGroup = async () => {
-    try {
-      const response = await groupsAPI.joinGroup(parseInt(id!));
-      setIsJoined(true);
-      
-      if (group?.privacy === 'PUBLIC') {
-        alert('Successfully joined the group!');
-        fetchGroupData(); // Refresh to update member count
-        fetchGroupMembers();
-      } else {
-        alert('Join request sent! You will be notified when approved.');
-      }
-    } catch (error: any) {
-      alert(error.message || 'Failed to join group');
+  try {
+    const response = await groupsAPI.joinGroup(parseInt(id!));
+    
+    // Refresh membership status after joining
+    await checkUserMembership();
+    
+    if (group?.privacy === 'PUBLIC') {
+      toast.success("Successfully joined the group!");
+      fetchGroupData(); 
+      fetchGroupMembers();
+    } else {
+      toast.success('Join request sent!');
     }
-  };
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to join group');
+  }
+};
 
   const handleLeaveGroup = async () => {
-    if (!confirm('Are you sure you want to leave this group?')) return;
+    const confirmed = await new Promise((resolve) => {
+    toast(t => (
+      <div className='flex flex-col gap-2 justify-between'>
+        Leave group? 
+        <div className='flex items-center justify-evenly'>
+          <button onClick={() => { resolve(true); toast.dismiss(t.id); }} className="text-red-600">Yes</button>
+          <button onClick={() => { resolve(false); toast.dismiss(t.id); }}>No</button>
+        </div>
+        
+      </div>
+    ), { duration: Infinity });
+  });
+
+  if (!confirmed) return;
 
     try {
       await groupsAPI.leaveGroup(parseInt(id!));
       setIsJoined(false);
       setIsAdmin(false);
-      alert('Successfully left the group');
+      setUserMembershipStatus('');
+      // alert('Successfully left the group');
+      toast.success("Successfully left the group");
       navigate('/groups');
     } catch (error: any) {
       alert(error.message || 'Failed to leave group');
@@ -147,7 +180,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   const handleApproveRequest = async (userId: number) => {
     try {
       await groupsAPI.handleJoinRequest(parseInt(id!), userId, 'ACTIVE');
-      alert('Request approved successfully');
+      toast.success('Request approved successfully');
       fetchPendingRequests();
       fetchGroupData();
       fetchGroupMembers();
@@ -159,7 +192,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   const handleRejectRequest = async (userId: number) => {
     try {
       await groupsAPI.handleJoinRequest(parseInt(id!), userId, 'REJECTED');
-      alert('Request rejected successfully');
+      toast.success('Request rejected successfully');
       fetchPendingRequests();
     } catch (error: any) {
       alert(error.message || 'Failed to reject request');
@@ -167,7 +200,72 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   };
 
   const handleScheduleEvent = () => {
-    alert('Event scheduling feature coming soon!');
+    toast.error('Event scheduling feature coming soon!');
+  };
+
+  const renderJoinButton = () => {
+    if (isJoined) {
+      if (userMembershipStatus === 'PENDING') {
+        return (
+          <button
+            disabled
+            className="bg-yellow-500 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 opacity-75 cursor-not-allowed"
+          >
+            <UserPlus className="h-5 w-5" />
+            <span>Request Pending</span>
+          </button>
+        );
+      }
+      
+      return (
+        <div className="w-full md:w-auto md:py-0 py-3 flex items-center md:flex-row flex-col gap-2 md:space-x-3">
+          <Link
+            to={`/chat/${group?.id}`}
+            className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 shadow-lg"
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span>Open Chat</span>
+          </Link>
+          {!isAdmin && (
+            <button
+              onClick={handleLeaveGroup}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-xl font-medium transition-colors duration-200"
+            >
+              Leave Group
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={handleLeaveGroup}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-xl font-medium transition-colors duration-200"
+            >
+              Leave & Delete Group
+            </button>
+          )}
+          {
+            isAdmin && (
+                <Link
+                  to={`/groups/${group?.id}/edit`}
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 shadow-lg"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>Edit Group</span>
+                </Link>
+              )
+          }
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={handleJoinGroup}
+        className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-medium md:mt-0 mt-2 transition-colors duration-200 flex items-center space-x-2 transform hover:scale-105 shadow-lg"
+      >
+        <UserPlus className="h-5 w-5" />
+        <span>{group?.privacy === 'PUBLIC' ? 'Join Group' : 'Request to Join'}</span>
+      </button>
+    );
   };
 
   if (isLoading) {
@@ -208,7 +306,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       <Navbar onLogout={onLogout} />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link
@@ -222,7 +320,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
 
         {/* Group Header */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6 mb-8">
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start justify-between flex-col md:flex-row mb-6">
             <div className="flex items-center space-x-4">
               <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-4 rounded-xl">
                 <Users className="h-8 w-8 text-white" />
@@ -248,37 +346,16 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                       </>
                     )}
                   </div>
+                  {userMembershipStatus === 'PENDING' && (
+                    <div className="flex items-center space-x-2 text-sm text-yellow-600">
+                      <UserPlus className="h-4 w-4" />
+                      <span>Join Request Pending</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-3">
-              {!isJoined ? (
-                <button
-                  onClick={handleJoinGroup}
-                  className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 transform hover:scale-105 shadow-lg"
-                >
-                  <UserPlus className="h-5 w-5" />
-                  <span>Join Group</span>
-                </button>
-              ) : (
-                <div className="flex items-center space-x-3">
-                  <Link
-                    to={`/chat/${group.id}`}
-                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 shadow-lg"
-                  >
-                    <MessageSquare className="h-5 w-5" />
-                    <span>Open Chat</span>
-                  </Link>
-                  <button 
-                    onClick={handleLeaveGroup}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-xl font-medium transition-colors duration-200"
-                  >
-                    Leave Group
-                  </button>
-                </div>
-              )}
-            </div>
+              {renderJoinButton()}
           </div>
 
           <p className="text-gray-600 text-lg leading-relaxed mb-6">{group.description}</p>
@@ -308,14 +385,30 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
             {/* Members */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-800 font-inter">Members ({members.length})</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-800 font-inter">Members ({members.length})</h2>
+                  <Link 
+                    to={`/groups/${group.id}/members`}
+                    className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+                  >
+                    View All Members
+                  </Link>
+                </div>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {members.map((member) => (
+                  {members.slice(0, 6).map((member) => (
                     <div key={member.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                      <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-2 rounded-full">
-                        <Users className="h-5 w-5 text-white" />
+                      <div className="bg-gradient-to-r from-blue-500 to-teal-500 rounded-full">
+                        {member.avatarUrl?
+                      <div className='h-10 w-10'>
+                        <img src={member.avatarUrl} className='h-full w-full rounded-full object-cover'/>
+                      </div>
+                          : 
+                          <div className='p-2'>
+                            <User className='h-5 w-5 text-white'/>
+                          </div>  
+                    }
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
@@ -329,6 +422,16 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                     </div>
                   ))}
                 </div>
+                {members.length > 6 && (
+                  <div className="mt-4 text-center">
+                    <Link 
+                      to={`/groups/${group.id}/members`}
+                      className="text-blue-500 hover:text-blue-600 font-medium"
+                    >
+                      View all {members.length} members
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -336,36 +439,57 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
             {isAdmin && pendingRequests.length > 0 && (
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg">
                 <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-bold text-gray-800 font-inter">Pending Join Requests</h2>
+                  <h2 className="text-xl font-bold text-gray-800 font-inter">
+                    Pending Join Requests ({pendingRequests.length})
+                  </h2>
                 </div>
-                <div className="p-6 space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-orange-500 p-2 rounded-full">
-                          <UserPlus className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-gray-800 font-medium">{request.user.name}</p>
-                          <p className="text-gray-600 text-sm">{request.user.email}</p>
-                        </div>
+                <div className="p-6">
+                  {pendingRequests.length > 0 ? (
+                    <div className="space-y-4">
+                      {pendingRequests.map((request) => (
+                        <div key={request.id} className="flex flex-col md:flex-row md:gap-0 gap-2 md:items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
+                          <div className="flex items-center space-x-3">
+                            {request.user.avatarUrl?
+                      <div className='h-10 w-10'>
+                        <img src={request.user.avatarUrl} className='h-full w-full rounded-full object-cover'/>
                       </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleApproveRequest(request.user.id)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleRejectRequest(request.user.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          Reject
-                        </button>
-                      </div>
+                          : 
+                          <div className='p-2 bg-orange-500'>
+                            <UserPlus className='h-5 w-5 text-white'/>
+                          </div>  
+                    }
+                            <div>
+                              <p className="text-gray-800 font-medium">{request.user.name}</p>
+                              <div className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{request.user.email}</p>
+                        </div>
+                              <p className="text-orange-600 text-xs">Requested on {new Date(request.joinedAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-center space-x-2">
+                            <button
+                              onClick={() => handleApproveRequest(request.user.id)}
+                              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                            >
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleRejectRequest(request.user.id)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                            >
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="text-center py-6">
+                      <UserPlus className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">No pending join requests</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -386,7 +510,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                   <MessageSquare className="h-4 w-4" />
                   <span>Open Chat</span>
                 </Link>
-                <button 
+                <button
                   onClick={handleScheduleEvent}
                   className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
                 >
@@ -394,7 +518,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                   <span>Schedule Event</span>
                 </button>
                 {isAdmin && (
-                  <button 
+                  <button
                     onClick={() => setShowInviteModal(true)}
                     className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
                   >
@@ -445,7 +569,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl border border-gray-200 max-w-md w-full p-6 shadow-xl">
               <h2 className="text-xl font-bold text-gray-800 mb-4 font-inter">Invite Member</h2>
-              
+
               <div className="space-y-4">
                 <p className="text-gray-600">
                   Share this group link with others to invite them to join:
@@ -472,6 +596,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
           </div>
         )}
       </div>
+      <Toaster/>
     </div>
   );
 };

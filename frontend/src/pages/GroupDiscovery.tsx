@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Users, Search, Plus, Lock, Globe, Filter, Loader } from 'lucide-react';
 import { groupsAPI, coursesAPI } from '../services/api';
+import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 interface GroupDiscoveryProps {
   onLogout: () => void;
@@ -37,15 +39,15 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
   const [filterPrivacy, setFilterPrivacy] = useState('');
+  const [filterSize, setFilterSize] = useState('');
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [joinedGroups, setJoinedGroups] = useState<number[]>([]);
+  const [membershipStatus, setMembershipStatus] = useState<{ [key: number]: string }>({});
 
   useEffect(() => {
     fetchGroups();
     fetchCourses();
-    fetchMyGroups();
   }, []);
 
   useEffect(() => {
@@ -63,7 +65,11 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
         searchTerm || undefined,
         filterCourse ? parseInt(filterCourse) : undefined
       );
-      setGroups(response.groups || []);
+      const groupsData = response.groups || [];
+      setGroups(groupsData);
+      
+      // Check membership status for all groups
+      await checkAllGroupsMembership(groupsData);
     } catch (error) {
       console.error('Failed to fetch groups:', error);
       setGroups([]);
@@ -81,30 +87,71 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
     }
   };
 
-  const fetchMyGroups = async () => {
+  const checkGroupMembership = async (groupId: number) => {
     try {
-      const response = await groupsAPI.getMyGroups();
-      const myGroupIds = (response.groups || []).map((group: Group) => group.id);
-      setJoinedGroups(myGroupIds);
+      const response = await groupsAPI.getMyMembership(groupId);
+      return response.membership?.status || 'NOT_MEMBER';
     } catch (error) {
-      console.error('Failed to fetch my groups:', error);
+      console.error('Failed to check membership status:', error);
+      return 'NOT_MEMBER';
+    }
+  };
+
+  // Add this function to check membership for all groups
+  const checkAllGroupsMembership = async (groupsData: Group[]) => {
+    try {
+      const statusPromises = groupsData.map(async (group) => {
+        const status = await checkGroupMembership(group.id);
+        return { groupId: group.id, status };
+      });
+
+      const statusResults = await Promise.all(statusPromises);
+      const newMembershipStatus: { [key: number]: string } = {};
+      
+      statusResults.forEach(result => {
+        newMembershipStatus[result.groupId] = result.status;
+      });
+
+      setMembershipStatus(newMembershipStatus);
+    } catch (error) {
+      console.error('Failed to check membership statuses:', error);
     }
   };
 
   const handleJoinGroup = async (groupId: number, privacy: string) => {
     try {
       const response = await groupsAPI.joinGroup(groupId);
-      setJoinedGroups(prev => [...prev, groupId]);
-      
+
+      // Update membership status for this specific group
+      const newStatus = privacy === 'PUBLIC' ? 'ACTIVE' : 'PENDING';
+      setMembershipStatus(prev => ({
+        ...prev,
+        [groupId]: newStatus
+      }));
+
       if (privacy === 'PUBLIC') {
-        alert('Successfully joined the group!');
+        toast.success("Successfully joined the group!");
         fetchGroups(); // Refresh groups to update member count
       } else {
-        alert('Join request sent! You will be notified when approved.');
+        toast.success('Join request sent!');
       }
     } catch (error: any) {
-      alert(error.message || 'Failed to join group');
+      toast.error(error.message || 'Failed to join group');
     }
+  };
+
+  const getJoinButtonText = (group: Group) => {
+    const status = membershipStatus[group.id];
+
+    if (status === 'ACTIVE') return 'Joined';
+    if (status === 'PENDING') return 'Request Pending';
+    if (group.privacy === 'PUBLIC') return 'Join Group';
+    return 'Request to Join';
+  };
+
+  const isJoinDisabled = (group: Group) => {
+    const status = membershipStatus[group.id];
+    return status === 'ACTIVE' || status === 'PENDING';
   };
 
   const getCourseName = (course: any) => {
@@ -114,7 +161,14 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
 
   const filteredGroups = groups.filter(group => {
     const matchesPrivacy = !filterPrivacy || group.privacy === filterPrivacy;
-    return matchesPrivacy;
+    const matchesSize = !filterSize || (
+      filterSize === 'small' ? group.currentMembers <= 5 :
+        filterSize === 'medium' ? group.currentMembers > 5 && group.currentMembers <= 15 :
+          filterSize === 'large' ? group.currentMembers > 15 :
+            filterSize === 'available' ? group.currentMembers < group.maxMembers : true
+    );
+
+    return matchesPrivacy && matchesSize;
   });
 
   return (
@@ -122,7 +176,7 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
       <Navbar onLogout={onLogout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex md:flex-row flex-col gap-3 items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold font-inter bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-2">
               Discover Study Groups
@@ -142,7 +196,7 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
 
         {/* Search and Filters */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
@@ -183,6 +237,20 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
                 <option value="">All Groups</option>
                 <option value="PUBLIC">Public</option>
                 <option value="PRIVATE">Private</option>
+              </select>
+            </div>
+            {/* Size Filter */}
+            <div>
+              <select
+                value={filterSize}
+                onChange={(e) => setFilterSize(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              >
+                <option value="">All Sizes</option>
+                <option value="small">Small (1-5 members)</option>
+                <option value="medium">Medium (6-15 members)</option>
+                <option value="large">Large (16+ members)</option>
+                <option value="available">Has Available Slots</option>
               </select>
             </div>
           </div>
@@ -240,20 +308,15 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
                   </Link>
                   <button
                     onClick={() => handleJoinGroup(group.id, group.privacy)}
-                    disabled={joinedGroups.includes(group.id)}
-                    className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
-                      joinedGroups.includes(group.id)
-                        ? 'bg-green-500 text-white cursor-not-allowed'
+                    disabled={isJoinDisabled(group)}
+                    className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${isJoinDisabled(group)
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
                         : group.privacy === 'PUBLIC'
-                        ? 'bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white'
-                        : 'bg-orange-500 hover:bg-orange-600 text-white'
-                    }`}
+                          ? 'bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white'
+                          : 'bg-orange-500 hover:bg-orange-600 text-white'
+                      }`}
                   >
-                    {joinedGroups.includes(group.id) 
-                      ? 'Joined' 
-                      : group.privacy === 'PUBLIC' 
-                      ? 'Join Group' 
-                      : 'Request to Join'}
+                    {getJoinButtonText(group)}
                   </button>
                 </div>
               </div>
@@ -276,7 +339,9 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
           </div>
         )}
       </div>
+      <Toaster />
     </div>
+
   );
 };
 

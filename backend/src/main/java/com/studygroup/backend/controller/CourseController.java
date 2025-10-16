@@ -1,8 +1,10 @@
 package com.studygroup.backend.controller;
 
 import com.studygroup.backend.entity.Course;
+import com.studygroup.backend.entity.Group;
 import com.studygroup.backend.entity.User;
 import com.studygroup.backend.service.CourseService;
+import com.studygroup.backend.service.GroupService;
 import com.studygroup.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,9 @@ public class CourseController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private GroupService groupService;
 
     // Get all courses
     @GetMapping
@@ -100,6 +105,17 @@ public class CourseController {
         try {
             User user = userService.findByEmail(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Check if user is in any groups for this course
+            List<Group> userGroups = groupService.getUserGroups(user.getId());
+            boolean hasCourseGroups = userGroups.stream()
+                    .anyMatch(group -> group.getCourse().getId().equals(courseId));
+
+            if (hasCourseGroups) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Cannot unenroll from course while you are in study groups for this course. Please leave all groups for this course first."
+                ));
+            }
 
             courseService.unenrollUserFromCourse(user.getId(), courseId);
 
