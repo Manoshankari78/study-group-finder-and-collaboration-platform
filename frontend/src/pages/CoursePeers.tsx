@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Users, Mail, BookOpen, Loader, MessageCircle, ExternalLink } from 'lucide-react';
+import { Users, Mail, BookOpen, Loader, MessageCircle, ExternalLink, User } from 'lucide-react';
 import { coursesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -85,7 +85,7 @@ const CoursePeers = ({ onLogout }: CoursePeersProps) => {
 
   const getAllCourses = () => {
     const allCourses = peers.flatMap(peer => peer.commonCourses);
-    
+
     const uniqueCourses = allCourses.filter((course, index, self) =>
       index === self.findIndex(c => c.id === course.id)
     );
@@ -93,8 +93,8 @@ const CoursePeers = ({ onLogout }: CoursePeersProps) => {
   };
 
   const handleViewCoursePeers = (courseId: number, courseName: string) => {
-    navigate(`/courses/${courseId}/peers`, { 
-      state: { courseName } 
+    navigate(`/courses/${courseId}/peers`, {
+      state: { courseName }
     });
   };
 
@@ -172,15 +172,15 @@ const CoursePeers = ({ onLogout }: CoursePeersProps) => {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 font-inter">
+                <h2 className="md:text-xl text-lg font-bold text-gray-800 font-inter">
                   Students in Your Courses
                 </h2>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 md:text-sm text-xs">
                   Found {filteredPeers.length} peers sharing courses with you
                   {selectedCourse !== 'all' && ` in selected course`}
                 </p>
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="md:text-sm text-xs text-transparent md:text-gray-500">
                 {peers.length} total peers
               </div>
             </div>
@@ -189,12 +189,12 @@ const CoursePeers = ({ onLogout }: CoursePeersProps) => {
           <div className="p-6">
             {filteredPeers.length === 0 ? (
               <div className="text-center py-12">
-                <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
                   {peers.length === 0 ? 'No peers found' : 'No matching peers'}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {peers.length === 0 
+                  {peers.length === 0
                     ? 'Enroll in some courses to find peers who are studying the same subjects.'
                     : 'Try adjusting your search criteria or course filter.'
                   }
@@ -222,21 +222,21 @@ const CoursePeers = ({ onLogout }: CoursePeersProps) => {
                         />
                       ) : (
                         <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center">
-                          <Users className="h-6 w-6 text-white" />
+                          <User className="h-6 w-6 text-white" />
                         </div>
                       )}
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800">{peer.user.name}</h3>
-                        <p className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
-                          <Mail className="h-3 w-3" />
-                          <span>{peer.user.email}</span>
-                        </p>
+                        <div className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{peer.user.email}</p>
+                        </div>
                         {peer.user.universityName && (
                           <p className="text-gray-500 text-xs mt-1">{peer.user.universityName}</p>
                         )}
                       </div>
                     </div>
-                    
+
                     {peer.user.bio && (
                       <p className="text-gray-600 text-sm mb-4 line-clamp-2">{peer.user.bio}</p>
                     )}

@@ -15,26 +15,27 @@ import ResetPassword from './pages/ResetPassword';
 import CoursePeers from './pages/CoursePeers';
 import CourseSpecificPeers from './pages/CourseSpecificPeers';
 import GroupMembers from './pages/GroupMembers';
+import GroupEdit from './pages/GroupEdit';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
 // Public Route component (redirect to dashboard if already authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  
+
   return !user ? <>{children}</> : <Navigate to="/dashboard" />;
 };
 
@@ -45,128 +46,135 @@ function AppContent() {
     <div className="min-h-screen">
       <Router>
         <Routes>
-          <Route 
-            path="/login" 
+          <Route
+            path="/login"
             element={
               <PublicRoute>
                 <Login />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/register" 
+          <Route
+            path="/register"
             element={
               <PublicRoute>
                 <Register />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/dashboard" 
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/courses" 
+          <Route
+            path="/courses"
             element={
               <ProtectedRoute>
                 <CourseManagement onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/groups" 
+          <Route
+            path="/groups"
             element={
               <ProtectedRoute>
                 <GroupDiscovery onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/groups/create" 
+          <Route
+            path="/groups/create"
             element={
               <ProtectedRoute>
                 <GroupCreation onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/groups/:id" 
+          <Route
+            path="/groups/:id"
             element={
               <ProtectedRoute>
                 <GroupDetail onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/groups/:id/members" 
+          <Route
+            path="/groups/:id/members"
             element={
               <ProtectedRoute>
                 <GroupMembers onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/chat/:groupId?" 
+          <Route
+            path="/chat/:groupId?"
             element={
               <ProtectedRoute>
                 <Chat onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/calendar" 
+          <Route
+            path="/calendar"
             element={
               <ProtectedRoute>
                 <Calendar onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/notifications" 
+          <Route
+            path="/notifications"
             element={
               <ProtectedRoute>
                 <NotificationsPage onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/profile" 
+          <Route
+            path="/profile"
             element={
               <ProtectedRoute>
                 <ProfilePage onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/peers" 
+          <Route
+            path="/peers"
             element={
               <ProtectedRoute>
                 <CoursePeers onLogout={logout} />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/courses/:courseId/peers" 
+          <Route
+            path="/courses/:courseId/peers"
             element={
               <ProtectedRoute>
                 <CourseSpecificPeers onLogout={logout} />
               </ProtectedRoute>
             } />
           <Route 
-            path="/reset-password" 
+            path="/groups/:id/edit" 
+            element={
+              <ProtectedRoute>
+                <GroupEdit onLogout={logout} />
+              </ProtectedRoute>
+            } />
+          <Route
+            path="/reset-password"
             element={
               <PublicRoute>
                 <ResetPassword />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/" 
-            element={<Navigate to="/dashboard" />} 
+          <Route
+            path="/"
+            element={<Navigate to="/dashboard" />}
           />
         </Routes>
       </Router>

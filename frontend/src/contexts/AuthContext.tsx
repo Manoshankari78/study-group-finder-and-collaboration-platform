@@ -8,7 +8,6 @@ interface User {
   avatarUrl?: string;
   bio?: string;
   universityName?: string;
-  // Add other user fields as needed
 }
 
 interface AuthContextType {

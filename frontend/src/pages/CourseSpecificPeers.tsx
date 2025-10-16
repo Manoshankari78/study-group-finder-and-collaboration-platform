@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Users, Mail, BookOpen, Loader, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Users, Mail, BookOpen, Loader, ArrowLeft, MessageCircle, User } from 'lucide-react';
 import { coursesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -118,8 +118,8 @@ const CourseSpecificPeers = ({ onLogout }: CourseSpecificPeersProps) => {
                 Students enrolled in this course
               </p>
             </div>
-            <div className="text-sm text-gray-500">
-              {peers.length} students
+            <div className="md:text-sm text-xs text-gray-500">
+              {peers.length} peers
             </div>
           </div>
         </div>
@@ -137,7 +137,7 @@ const CourseSpecificPeers = ({ onLogout }: CourseSpecificPeersProps) => {
           <div className="p-6">
             {peers.length === 0 ? (
               <div className="text-center py-12">
-                <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">No peers found</h3>
                 <p className="text-gray-600 mb-4">
                   There are no other students enrolled in this course yet.
@@ -163,15 +163,15 @@ const CourseSpecificPeers = ({ onLogout }: CourseSpecificPeersProps) => {
                         />
                       ) : (
                         <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center">
-                          <Users className="h-6 w-6 text-white" />
+                          <User className="h-6 w-6 text-white" />
                         </div>
                       )}
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800">{peer.name}</h3>
-                        <p className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
-                          <Mail className="h-3 w-3" />
-                          <span>{peer.email}</span>
-                        </p>
+                       <div className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{peer.email}</p>
+                        </div>
                         {peer.universityName && (
                           <p className="text-gray-500 text-xs mt-1">{peer.universityName}</p>
                         )}

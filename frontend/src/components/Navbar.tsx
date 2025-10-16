@@ -27,7 +27,7 @@ const Navbar = ({ onLogout }: NavbarProps) => {
     { path: '/peers', label: 'Peers', icon: Contact },
     { path: '/groups', label: 'Groups', icon: Users },
     { path: '/chat', label: 'Chat', icon: MessageSquare },
-    { path: '/calendar', label: 'Calendar', icon: Calendar },
+    // { path: '/calendar', label: 'Calendar', icon: Calendar },
   ];
 
   return (

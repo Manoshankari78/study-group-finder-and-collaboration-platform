@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { userAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface ProfilePageProps {
   onLogout: () => void;
@@ -122,7 +123,8 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
       }
 
       setIsEditing(false);
-      alert('Profile updated successfully!');
+      // alert('Profile updated successfully!');
+      toast.success("Profile updated successfully!");
     } catch (error: any) {
       console.error('Update profile error:', error);
       alert(error.message || 'Failed to update profile. Please try again.');
@@ -299,7 +301,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
                 <h2 className="text-xl font-bold text-gray-800 mb-1">
                   {profileData.name || 'No Name'}
                 </h2>
-                <p className="text-gray-600 mb-2">{profileData.email}</p>
+                <p className="text-gray-600 mb-2 overflow-clip">{profileData.email}</p>
                 {profileData.bio && (
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">{profileData.bio}</p>
                 )}
@@ -843,6 +845,7 @@ const ProfilePage = ({ onLogout }: ProfilePageProps) => {
           </div>
         </div>
       </div>
+      <Toaster/>
     </div>
   );
 };

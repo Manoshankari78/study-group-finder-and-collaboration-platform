@@ -323,9 +323,9 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                           <Users className="h-6 w-6 text-white" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-bold text-gray-800 text-lg">{group.name}</h3>
-                          <p className="text-gray-600 mb-2">{group.description}</p>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <h3 className="font-bold text-gray-800 text-base">{group.name}</h3>
+                          <p className="text-gray-600 mb-2 text-sm">{group.description}</p>
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
                             <span className="flex items-center space-x-1">
                               <Users className="h-4 w-4" />
                               <span>{group.currentMembers} members</span>
@@ -336,11 +336,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                                 <span>{group.course.courseCode}</span>
                               </span>
                             )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
-                            Active
                           </div>
                         </div>
                       </div>
@@ -385,10 +380,10 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                         <img
                           src={peer.user.avatarUrl}
                           alt={peer.user.name}
-                          className="w-10 h-10 rounded-xl object-cover"
+                          className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className={`p-3 rounded-xl bg-gradient-to-r ${getAvatarColor(index)} shadow-lg`}>
+                        <div className={`p-3 rounded-full bg-gradient-to-r ${getAvatarColor(index)} shadow-lg`}>
                           <User className="h-5 w-5 text-white" />
                         </div>
                       )}

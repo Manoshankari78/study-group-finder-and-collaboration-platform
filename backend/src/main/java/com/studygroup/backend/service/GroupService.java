@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -106,9 +107,27 @@ public class GroupService {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Group not found"));
 
-        // Check if user is already a member
-        if (groupMemberRepository.existsByGroupAndUser(group, user)) {
-            throw new RuntimeException("You are already a member of this group");
+        // Check if user already has a membership record
+        Optional<GroupMember> existingMember = groupMemberRepository.findByGroupAndUser(group, user);
+
+        if (existingMember.isPresent()) {
+            GroupMember member = existingMember.get();
+
+            // If user is already active, throw error
+            if (member.getStatus() == GroupMemberStatus.ACTIVE) {
+                throw new RuntimeException("You are already a member of this group");
+            }
+
+            // If user was rejected, allow them to re-apply by updating the status to PENDING
+            if (member.getStatus() == GroupMemberStatus.REJECTED) {
+                member.setStatus(GroupMemberStatus.PENDING);
+                return groupMemberRepository.save(member);
+            }
+
+            // If user already has a pending request
+            if (member.getStatus() == GroupMemberStatus.PENDING) {
+                throw new RuntimeException("You already have a pending join request for this group");
+            }
         }
 
         // Check if user is enrolled in the course
@@ -127,7 +146,7 @@ public class GroupService {
         GroupMember groupMember = new GroupMember(group, user, GroupMemberRole.MEMBER);
         groupMember.setStatus(status);
 
-        // If public group, update member count
+        // If public group, update member count immediately
         if (status == GroupMemberStatus.ACTIVE) {
             group.setCurrentMembers(group.getCurrentMembers() + 1);
             groupRepository.save(group);
@@ -145,13 +164,15 @@ public class GroupService {
         GroupMember groupMember = groupMemberRepository.findByGroupAndUser(group, user)
                 .orElseThrow(() -> new RuntimeException("You are not a member of this group"));
 
-        // If user is admin and last admin, delete group
+        // If user is admin and last admin, we need special handling
         if (groupMember.getRole() == GroupMemberRole.ADMIN) {
-            long adminCount = groupMemberRepository.findByGroup(group).stream()
-                    .filter(member -> member.getRole() == GroupMemberRole.ADMIN)
-                    .count();
+            List<GroupMember> admins = groupMemberRepository.findByGroup(group).stream()
+                    .filter(member -> member.getRole() == GroupMemberRole.ADMIN && member.getStatus() == GroupMemberStatus.ACTIVE)
+                    .collect(Collectors.toList());
 
-            if (adminCount == 1) {
+            if (admins.size() == 1 && admins.get(0).getId().equals(groupMember.getId())) {
+                // This is the last admin - delete the group
+                groupMemberRepository.deleteAll(groupMemberRepository.findByGroup(group));
                 groupRepository.delete(group);
                 return;
             }
@@ -164,6 +185,16 @@ public class GroupService {
             group.setCurrentMembers(group.getCurrentMembers() - 1);
             groupRepository.save(group);
         }
+    }
+
+    public GroupMember getUserMembershipStatus(Long userId, Long groupId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+
+        return groupMemberRepository.findByGroupAndUser(group, user)
+                .orElse(null);
     }
 
     public GroupMember updateMemberStatus(Long groupId, Long userId, GroupMemberStatus status, Long adminUserId) {
@@ -266,6 +297,46 @@ public class GroupService {
         }
 
         groupRepository.delete(group);
+    }
+
+    public void removeMember(Long groupId, Long userId, Long adminUserId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+
+        // Check if admin user is actually an admin of the group
+        User adminUser = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new RuntimeException("Admin user not found"));
+
+        GroupMember adminMember = groupMemberRepository.findByGroupAndUser(group, adminUser)
+                .orElseThrow(() -> new RuntimeException("You are not a member of this group"));
+
+        if (adminMember.getRole() != GroupMemberRole.ADMIN) {
+            throw new RuntimeException("Only group admins can remove members");
+        }
+
+        User userToRemove = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User to remove not found"));
+
+        GroupMember memberToRemove = groupMemberRepository.findByGroupAndUser(group, userToRemove)
+                .orElseThrow(() -> new RuntimeException("Member not found in this group"));
+
+        // Cannot remove yourself using this method - use leaveGroup instead
+        if (userToRemove.getId().equals(adminUserId)) {
+            throw new RuntimeException("Cannot remove yourself. Use leave group instead.");
+        }
+
+        // Cannot remove other admins
+        if (memberToRemove.getRole() == GroupMemberRole.ADMIN) {
+            throw new RuntimeException("Cannot remove other admins from the group");
+        }
+
+        groupMemberRepository.delete(memberToRemove);
+
+        // Update member count if active member
+        if (memberToRemove.getStatus() == GroupMemberStatus.ACTIVE) {
+            group.setCurrentMembers(group.getCurrentMembers() - 1);
+            groupRepository.save(group);
+        }
     }
 
     private boolean isUserEnrolledInCourse(Long userId, Long courseId) {

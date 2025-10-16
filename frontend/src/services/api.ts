@@ -300,4 +300,16 @@ export const groupsAPI = {
       body: JSON.stringify({ status }),
     });
   },
+  getMyMembership: async (groupId: number) => {
+    return apiCall(`/groups/${groupId}/my-membership`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+  removeMember: async (groupId: number, userId: number) => {
+  return apiCall(`/groups/${groupId}/members/${userId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+},
 };
