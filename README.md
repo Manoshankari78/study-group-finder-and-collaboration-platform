@@ -60,10 +60,10 @@ This platform solves these challenges by providing an integrated environment for
 - ✅ Filter and search functionality
 
 ### Study Groups
-- 🚧 Create and manage study groups
-- 🚧 Public/private group settings
-- 🚧 Group member management
-- 🚧 Group discovery and filtering
+- ✅ Create and manage study groups
+- ✅ Public/private group settings
+- ✅ Group member management
+- ✅ Group discovery and filtering
 
 ### Communication
 - 🚧 Real-time chat functionality
