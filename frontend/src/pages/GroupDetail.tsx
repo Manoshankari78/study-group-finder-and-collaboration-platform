@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import DocumentPanel from '../components/DocumentPanel';
 import { Users, Calendar, MessageSquare, Settings, Crown, UserPlus, Globe, Lock, ArrowLeft, Loader, User, Mail } from 'lucide-react';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,7 +57,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<GroupMember[]>([]);
   const [userMembershipStatus, setUserMembershipStatus] = useState<string>('');
-
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents'>('overview');
   useEffect(() => {
     if (id) {
       fetchGroupData();
@@ -317,6 +318,25 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
             <span>Back to Groups</span>
           </Link>
         </div>
+        <div className="mb-6">
+          <div className="flex space-x-4 border-b">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 ${activeTab === 'overview' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`px-4 py-2 ${activeTab === 'documents' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            >
+              Documents
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'overview' && (
+          <>
 
         {/* Group Header */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6 mb-8">
@@ -563,6 +583,12 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
             </div>
           </div>
         </div>
+        </>
+        )}
+
+        {activeTab === 'documents' && (
+          <DocumentPanel groupId={parseInt(id!)} userId={currentUser?.id || 0} />
+        )}
 
         {/* Invite Member Modal */}
         {showInviteModal && (

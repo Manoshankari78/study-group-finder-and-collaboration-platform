@@ -1,7 +1,31 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+// src/pages/Chat.tsx - Complete Implementation
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useWebSocket } from '../contexts/WebSocketContext';
+import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import { Send, Smile, Paperclip, Users, Hash, MessageSquare } from 'lucide-react';
+import { 
+  Send, Paperclip, Image as ImageIcon, Smile, Search, 
+  MoreVertical, Edit2, Trash2, Check, X, Upload, File as FileIcon
+} from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
+
+interface Message {
+  id: number;
+  content: string;
+  sender: {
+    id: number;
+    name: string;
+    avatarUrl?: string;
+  };
+  timestamp: string;
+  type: 'TEXT' | 'FILE' | 'IMAGE' | 'SYSTEM';
+  fileUrl?: string;
+  fileName?: string;
+  readBy?: number[];
+  edited?: boolean;
+  editedAt?: string;
+}
 
 interface ChatProps {
   onLogout: () => void;
@@ -9,254 +33,555 @@ interface ChatProps {
 
 const Chat = ({ onLogout }: ChatProps) => {
   const { groupId } = useParams();
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      user: 'Sarah Johnson',
-      message: 'Hey everyone! Did anyone finish the problem set for Chapter 3?',
-      time: '2:30 PM',
-      avatar: 'bg-pink-600'
-    },
-    {
-      id: 2,
-      user: 'Mike Chen',
-      message: 'I did! Question 7 was pretty tricky though. Want to go over it together?',
-      time: '2:32 PM',
-      avatar: 'bg-blue-600'
-    },
-    {
-      id: 3,
-      user: 'Emily Davis',
-      message: 'That would be great! I\'m still stuck on the recursion part.',
-      time: '2:35 PM',
-      avatar: 'bg-green-600'
-    },
-    {
-      id: 4,
-      user: 'You',
-      message: 'Count me in! Should we schedule a video call for tonight?',
-      time: '2:38 PM',
-      avatar: 'bg-purple-600',
-      isOwn: true
-    },
-    {
-      id: 5,
-      user: 'Alex Rodriguez',
-      message: 'Perfect timing! I was just about to ask the same question.',
-      time: '2:40 PM',
-      avatar: 'bg-yellow-600'
-    },
-    {
-      id: 6,
-      user: 'Sarah Johnson',
-      message: 'Let\'s do 7 PM. I\'ll send the Zoom link in a few minutes.',
-      time: '2:42 PM',
-      avatar: 'bg-pink-600'
-    }
-  ]);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { isConnected, sendMessage, subscribeToGroup, unsubscribeFromGroup, sendTypingIndicator } = useWebSocket();
+  
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const groups = [
-    { id: '1', name: 'CS 101 Study Warriors', unread: 3, active: groupId === '1' },
-    { id: '2', name: 'Calculus Masters', unread: 0, active: groupId === '2' },
-    { id: '3', name: 'Physics Lab Partners', unread: 5, active: groupId === '3' },
-    { id: '4', name: 'Data Structures Deep Dive', unread: 1, active: groupId === '4' }
-  ];
+  useEffect(() => {
+    if (groupId && isConnected) {
+      subscribeToGroup(parseInt(groupId), handleNewMessage);
+      fetchMessageHistory();
 
-  const activeGroup = groups.find(g => g.id === groupId) || groups[0];
+      // Subscribe to typing indicators
+      // This would need additional WebSocket subscription
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim()) {
-      const newMessage = {
-        id: messages.length + 1,
-        user: 'You',
-        message: message.trim(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        avatar: 'bg-purple-600',
-        isOwn: true
+      return () => {
+        unsubscribeFromGroup(parseInt(groupId));
       };
-      setMessages([...messages, newMessage]);
-      setMessage('');
+    }
+  }, [groupId, isConnected]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleNewMessage = (message: Message) => {
+    setMessages(prev => {
+      // Avoid duplicates
+      if (prev.some(m => m.id === message.id)) {
+        return prev;
+      }
+      return [...prev, message];
+    });
+
+    // Mark as read if not own message
+    if (message.sender.id !== user?.id) {
+      markMessageAsRead(message.id);
     }
   };
 
-  const onlineMembers = [
-    { name: 'Sarah Johnson', avatar: 'bg-pink-600' },
-    { name: 'Mike Chen', avatar: 'bg-blue-600' },
-    { name: 'Emily Davis', avatar: 'bg-green-600' },
-    { name: 'Alex Rodriguez', avatar: 'bg-yellow-600' }
-  ];
+  const fetchMessageHistory = async () => {
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:8080/api/chat/groups/${groupId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      setMessages(data.messages || []);
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+      toast.error('Failed to load messages');
+    }
+  };
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMessage.trim() && groupId) {
+      sendMessage(parseInt(groupId), newMessage);
+      setNewMessage('');
+      handleTyping(false);
+    }
+  };
+
+  const handleTyping = (typing: boolean) => {
+    if (groupId) {
+      sendTypingIndicator(parseInt(groupId), typing);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (!isTyping) {
+      setIsTyping(true);
+      handleTyping(true);
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      handleTyping(false);
+    }, 1000);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      setSelectedFile(file);
+      uploadFile(file);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('groupId', groupId!);
+
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const progress = (e.loaded / e.total) * 100;
+          setUploadProgress(progress);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          const response = JSON.parse(xhr.responseText);
+          // Send file message
+          sendMessage(parseInt(groupId!), '', 'FILE', response.fileUrl, file.name);
+          toast.success('File uploaded successfully');
+          setSelectedFile(null);
+          setUploadProgress(0);
+        } else {
+          toast.error('File upload failed');
+        }
+      });
+
+      xhr.open('POST', 'http://localhost:8080/api/files/upload');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.send(formData);
+    } catch (error) {
+      console.error('File upload error:', error);
+      toast.error('Failed to upload file');
+    }
+  };
+
+  const handleEditMessage = async (messageId: number) => {
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:8080/api/chat/messages/${messageId}/edit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: editingContent })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(prev => prev.map(m => 
+          m.id === messageId ? data.message : m
+        ));
+        setEditingMessageId(null);
+        setEditingContent('');
+        toast.success('Message edited successfully');
+      } else {
+        toast.error('Failed to edit message');
+      }
+    } catch (error) {
+      console.error('Edit message error:', error);
+      toast.error('Failed to edit message');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    if (!confirm('Are you sure you want to delete this message?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:8080/api/chat/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        toast.success('Message deleted successfully');
+      } else {
+        toast.error('Failed to delete message');
+      }
+    } catch (error) {
+      console.error('Delete message error:', error);
+      toast.error('Failed to delete message');
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const response = await fetch(
+        `http://localhost:8080/api/chat/groups/${groupId}/search?query=${encodeURIComponent(searchQuery)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error('Search failed');
+    }
+  };
+
+  const markMessageAsRead = async (messageId: number) => {
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      await fetch(`http://localhost:8080/api/chat/messages/${messageId}/read`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error('Mark as read error:', error);
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
+
+  const renderMessage = (message: Message) => {
+    const isOwn = message.sender.id === user?.id;
+    const isEditing = editingMessageId === message.id;
+
+    return (
+      <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}>
+        <div className={`max-w-md ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+          {!isOwn && (
+            <span className="text-xs text-gray-600 mb-1">{message.sender.name}</span>
+          )}
+          
+          <div className={`relative rounded-xl px-4 py-2 ${
+            isOwn 
+              ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white'
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {isEditing ? (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  className="bg-white text-gray-800 px-2 py-1 rounded"
+                  autoFocus
+                />
+                <button
+                  onClick={() => handleEditMessage(message.id)}
+                  className="p-1 hover:bg-white/20 rounded"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingMessageId(null);
+                    setEditingContent('');
+                  }}
+                  className="p-1 hover:bg-white/20 rounded"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                {message.type === 'TEXT' && (
+                  <p className="text-sm break-words">{message.content}</p>
+                )}
+                
+                {message.type === 'FILE' && (
+                  <a
+                    href={message.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 hover:underline"
+                  >
+                    <FileIcon className="h-4 w-4" />
+                    <span className="text-sm">{message.fileName}</span>
+                  </a>
+                )}
+                
+                {message.type === 'IMAGE' && (
+                  <div>
+                    <img
+                      src={message.fileUrl}
+                      alt={message.fileName}
+                      className="max-w-sm rounded-lg mb-2"
+                    />
+                    {message.content && (
+                      <p className="text-sm">{message.content}</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs opacity-75">
+                    {formatTimestamp(message.timestamp)}
+                    {message.edited && ' (edited)'}
+                  </span>
+                  
+                  {isOwn && message.readBy && message.readBy.length > 0 && (
+                    <span className="text-xs opacity-75 ml-2">
+                      ✓✓ {message.readBy.length}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Message Actions */}
+            {isOwn && !isEditing && (
+              <div className="absolute -right-20 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => {
+                      setEditingMessageId(message.id);
+                      setEditingContent(message.content);
+                    }}
+                    className="p-1 bg-white rounded hover:bg-gray-100"
+                    title="Edit"
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMessage(message.id)}
+                    className="p-1 bg-white rounded hover:bg-gray-100"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       <Navbar onLogout={onLogout} />
 
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Sidebar */}
-        <div className="w-80 bg-white/80 backdrop-blur-sm border-r border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-800 font-inter">Study Groups</h2>
-          </div>
-          
-          <div className="overflow-y-auto">
-            {groups.map((group) => (
-              <div
-                key={group.id}
-                className={`p-4 border-b border-gray-200 cursor-pointer transition-colors ${
-                  group.active ? 'bg-blue-50' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-2 rounded-lg">
-                    <Hash className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-gray-800 font-medium">{group.name}</p>
-                    <p className="text-gray-600 text-sm">
-                      {group.unread > 0 ? `${group.unread} new messages` : 'No new messages'}
-                    </p>
-                  </div>
-                  {group.unread > 0 && (
-                    <div className="bg-gradient-to-r from-blue-500 to-teal-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {group.unread}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+      {!isConnected && (
+        <div className="bg-yellow-100 text-yellow-800 p-2 text-center text-sm">
+          Connecting to chat...
         </div>
+      )}
 
+      <div className="flex h-[calc(100vh-4rem)]">
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col bg-white">
           {/* Chat Header */}
-          <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-2 rounded-lg">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-800">{activeGroup.name}</h1>
-                  <p className="text-sm text-gray-600">{onlineMembers.length} members online</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {onlineMembers.slice(0, 4).map((member, index) => (
-                  <div
-                    key={index}
-                    className={`w-8 h-8 rounded-full ${member.avatar} flex items-center justify-center relative`}
-                    title={member.name}
-                  >
-                    <Users className="h-4 w-4 text-white" />
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                  </div>
-                ))}
-                {onlineMembers.length > 4 && (
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 text-xs font-medium">
-                    +{onlineMembers.length - 4}
-                  </div>
-                )}
-              </div>
+          <div className="border-b p-4 flex items-center justify-between bg-white/80 backdrop-blur-sm">
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">Group Chat</h2>
+              <p className="text-sm text-gray-600">
+                {typingUsers.length > 0
+                  ? `${typingUsers.join(', ')} ${typingUsers.length === 1 ? 'is' : 'are'} typing...`
+                  : 'Online'
+                }
+              </p>
             </div>
+            
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Search className="h-5 w-5 text-gray-600" />
+            </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex items-start space-x-3 ${msg.isOwn ? 'flex-row-reverse space-x-reverse' : ''}`}
-              >
-                <div className={`w-10 h-10 rounded-full ${msg.avatar} flex items-center justify-center flex-shrink-0`}>
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <div className={`max-w-md ${msg.isOwn ? 'text-right' : ''}`}>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-sm font-medium text-gray-800">{msg.user}</span>
-                    <span className="text-xs text-gray-500">{msg.time}</span>
-                  </div>
-                  <div
-                    className={`rounded-xl px-4 py-2 ${
-                      msg.isOwn
-                        ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    <p className="text-sm">{msg.message}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Message Input */}
-          <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200 p-4">
-            <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
-              <button
-                type="button"
-                className="text-gray-400 hover:text-gray-600 transition-colors p-2"
-              >
-                <Paperclip className="h-5 w-5" />
-              </button>
-
-              <div className="flex-1 relative">
+          {/* Search Bar */}
+          {showSearch && (
+            <div className="border-b p-3 bg-gray-50">
+              <div className="flex items-center space-x-2">
                 <input
                   type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Message ${activeGroup.name}`}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors pr-12"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search messages..."
+                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={handleSearch}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                 >
-                  <Smile className="h-5 w-5" />
+                  Search
                 </button>
               </div>
+              
+              {searchResults.length > 0 && (
+                <div className="mt-2 max-h-32 overflow-y-auto">
+                  {searchResults.map(msg => (
+                    <div
+                      key={msg.id}
+                      className="p-2 hover:bg-gray-100 rounded cursor-pointer text-sm"
+                      onClick={() => {
+                        // Scroll to message
+                        const element = document.getElementById(`message-${msg.id}`);
+                        element?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    >
+                      <span className="font-semibold">{msg.sender.name}:</span> {msg.content}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((msg) => (
+              <div key={msg.id} id={`message-${msg.id}`}>
+                {renderMessage(msg)}
+              </div>
+            ))}
+            
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* File Upload Progress */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="px-4 py-2 bg-blue-50">
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span>Uploading {selectedFile?.name}...</span>
+                <span>{Math.round(uploadProgress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="border-t p-4 bg-white">
+            <form onSubmit={handleSend} className="flex items-center space-x-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Attach file"
+              >
+                <Paperclip className="h-5 w-5 text-gray-500" />
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Attach image"
+              >
+                <ImageIcon className="h-5 w-5 text-gray-500" />
+              </button>
+              
+              <input
+                type="text"
+                value={newMessage}
+                onChange={handleInputChange}
+                placeholder="Type a message..."
+                disabled={!isConnected}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              />
+              
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Smile className="h-5 w-5 text-gray-500" />
+              </button>
+              
               <button
                 type="submit"
-                disabled={!message.trim()}
-                className={`p-3 rounded-xl transition-colors transform hover:scale-105 ${
-                  message.trim()
-                    ? 'bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
+                disabled={!newMessage.trim() || !isConnected}
+                className="p-3 bg-gradient-to-r from-blue-500 to-teal-500 text-white rounded-xl hover:from-blue-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Send className="h-5 w-5" />
               </button>
             </form>
           </div>
         </div>
-
-        {/* Right Sidebar - Members */}
-        <div className="w-64 bg-white/80 backdrop-blur-sm border-l border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-800 font-inter">Online Members</h2>
-          </div>
-          
-          <div className="p-4 space-y-3">
-            {onlineMembers.map((member, index) => (
-              <div key={index} className="flex items-center space-x-3">
-                <div className="relative">
-                  <div className={`w-10 h-10 rounded-full ${member.avatar} flex items-center justify-center`}>
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                </div>
-                <div>
-                  <p className="text-gray-800 font-medium">{member.name}</p>
-                  <p className="text-gray-600 text-xs">Online</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+      
+      <Toaster />
     </div>
   );
 };

@@ -5,7 +5,6 @@ import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.util.Map;
 
@@ -68,6 +67,39 @@ public class CloudinaryService {
             return publicIdWithVersion;
         } catch (Exception e) {
             return null;
+        }
+    }
+    // Add to CloudinaryService.java
+
+    public String uploadDocument(MultipartFile file) {
+        try {
+            if (file == null || file.isEmpty()) {
+                throw new RuntimeException("File is empty");
+            }
+
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "study-group-documents",
+                            "resource_type", "auto",
+                            "quality", "auto"
+                    ));
+
+            return uploadResult.get("secure_url").toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload document to Cloudinary", e);
+        }
+    }
+
+    public void deleteDocument(String documentUrl) {
+        try {
+            if (documentUrl != null && documentUrl.contains("cloudinary.com")) {
+                String publicId = extractPublicIdFromUrl(documentUrl);
+                if (publicId != null) {
+                    cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to delete document from Cloudinary: " + e.getMessage());
         }
     }
 }

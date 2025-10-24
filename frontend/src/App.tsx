@@ -16,7 +16,7 @@ import CoursePeers from './pages/CoursePeers';
 import CourseSpecificPeers from './pages/CourseSpecificPeers';
 import GroupMembers from './pages/GroupMembers';
 import GroupEdit from './pages/GroupEdit';
-
+import { WebSocketProvider } from './contexts/WebSocketContext';
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -43,6 +43,7 @@ function AppContent() {
   const { logout } = useAuth();
 
   return (
+    <WebSocketProvider>
     <div className="min-h-screen">
       <Router>
         <Routes>
@@ -179,6 +180,7 @@ function AppContent() {
         </Routes>
       </Router>
     </div>
+    </WebSocketProvider>
   );
 }
 
