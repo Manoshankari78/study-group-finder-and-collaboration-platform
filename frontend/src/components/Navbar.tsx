@@ -22,7 +22,7 @@ const Navbar = ({ onLogout }: NavbarProps) => {
   const unreadCount = 3;
 
   const navItems = [
-    { path: '/dashboard', label: 'Home', icon: Home },
+    // { path: '/dashboard', label: 'Home', icon: Home },
     { path: '/courses', label: 'Courses', icon: BookOpen },
     { path: '/peers', label: 'Peers', icon: Contact },
     { path: '/groups', label: 'Groups', icon: Users },

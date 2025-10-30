@@ -104,9 +104,9 @@ const handleRemoveMember = async (userId: number) => {
         <div className="mb-8">
           <Link
             to={`/groups/${id}`}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4"
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4 group"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Groups</span>
           </Link>
         </div>

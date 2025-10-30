@@ -95,7 +95,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         setStats({
           joinedGroups: groups.length,
           upcomingEvents: 5, // yet to implement events API
-          newMessages: 12, // yet to implement messages API
+          newMessages: 0, // yet to implement messages API
           studyProgress: calculateStudyProgress(enrolledCourses)
         });
 
@@ -254,7 +254,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+          {/* <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
             <div className="flex items-center">
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3 rounded-xl shadow-lg">
                 <MessageSquare className="h-6 w-6 text-white" />
@@ -264,7 +264,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                 <p className="text-gray-500 text-sm font-medium">New Messages</p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
             <div className="flex items-center">
