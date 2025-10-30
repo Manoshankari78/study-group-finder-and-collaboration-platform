@@ -66,9 +66,9 @@ This platform solves these challenges by providing an integrated environment for
 - ✅ Group discovery and filtering
 
 ### Communication
-- 🚧 Real-time chat functionality
-- 🚧 Group messaging
-- 🚧 Direct messaging
+- ✅ Real-time chat functionality
+- ✅ Group messaging
+- ✅ File Sharing
 
 ### Calendar & Scheduling
 - 🚧 Schedule study sessions
