@@ -26,7 +26,6 @@ public class CloudinaryService {
                 throw new RuntimeException("Only image files are allowed");
             }
 
-            // Upload to Cloudinary
             Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
                     ObjectUtils.asMap(
                             "folder", "study-group-avatars",
@@ -36,7 +35,6 @@ public class CloudinaryService {
                             "quality", "auto"
                     ));
 
-            // Return secure URL
             return uploadResult.get("secure_url").toString();
 
         } catch (IOException e) {
@@ -44,17 +42,36 @@ public class CloudinaryService {
         }
     }
 
+    public String uploadFile(MultipartFile file) {
+        try {
+            // Validate file
+            if (file == null || file.isEmpty()) {
+                throw new RuntimeException("File is empty");
+            }
+
+            // Upload to Cloudinary with different folder and settings for chat files
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "study-group-chat-files",
+                            "resource_type", "auto" // handle all file types
+                    ));
+
+            return uploadResult.get("secure_url").toString();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload file to Cloudinary", e);
+        }
+    }
+
     public void deleteImage(String imageUrl) {
         try {
             if (imageUrl != null && imageUrl.contains("cloudinary.com")) {
-                // Extract public ID from URL
                 String publicId = extractPublicIdFromUrl(imageUrl);
                 if (publicId != null) {
                     cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
                 }
             }
         } catch (Exception e) {
-            // Log error but don't throw - deletion failure shouldn't break the app
             System.err.println("Failed to delete image from Cloudinary: " + e.getMessage());
         }
     }

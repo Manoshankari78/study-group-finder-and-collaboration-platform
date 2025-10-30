@@ -128,9 +128,9 @@ const GroupEdit = ({ onLogout }: GroupEditProps) => {
         <div className="mb-8">
           <button
             onClick={() => navigate(`/groups/${id}`)}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4"
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4 group"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Group</span>
           </button>
           <h1 className="text-3xl font-bold font-inter bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-2">

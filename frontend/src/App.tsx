@@ -16,6 +16,8 @@ import CoursePeers from './pages/CoursePeers';
 import CourseSpecificPeers from './pages/CourseSpecificPeers';
 import GroupMembers from './pages/GroupMembers';
 import GroupEdit from './pages/GroupEdit';
+import FloatingChatBubble from './components/FloatingChatBubble';
+import GroupFiles from './pages/GroupFiles';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -157,8 +159,8 @@ function AppContent() {
                 <CourseSpecificPeers onLogout={logout} />
               </ProtectedRoute>
             } />
-          <Route 
-            path="/groups/:id/edit" 
+          <Route
+            path="/groups/:id/edit"
             element={
               <ProtectedRoute>
                 <GroupEdit onLogout={logout} />
@@ -176,7 +178,16 @@ function AppContent() {
             path="/"
             element={<Navigate to="/dashboard" />}
           />
+          <Route
+            path="/groups/:groupId/files"
+            element={
+              <ProtectedRoute>
+                <GroupFiles onLogout={logout} />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
+        <FloatingChatBubble />
       </Router>
     </div>
   );

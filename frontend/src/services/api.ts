@@ -17,7 +17,7 @@ const getAuthHeadersMultipart = () => {
   };
 };
 
-// Generic API call function
+// General API call function
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -150,7 +150,6 @@ export const coursesAPI = {
     });
   },
 
-  // Get user's enrolled courses
   getMyCourses: async () => {
     return apiCall('/courses/my-courses', {
       method: 'GET',
@@ -158,7 +157,6 @@ export const coursesAPI = {
     });
   },
 
-  // Enroll in a course
   enrollInCourse: async (courseId: number) => {
     return apiCall(`/courses/${courseId}/enroll`, {
       method: 'POST',
@@ -166,7 +164,6 @@ export const coursesAPI = {
     });
   },
 
-  // Unenroll from a course
   unenrollFromCourse: async (courseId: number) => {
     return apiCall(`/courses/${courseId}/unenroll`, {
       method: 'DELETE',
@@ -174,7 +171,7 @@ export const coursesAPI = {
     });
   },
 
-  // Get peers in same courses
+  // peers in same courses
   getCoursePeers: async () => {
     return apiCall('/courses/peers', {
       method: 'GET',
@@ -182,7 +179,7 @@ export const coursesAPI = {
     });
   },
 
-  // Get peers in specific course
+  // peers in specific course
   getPeersInCourse: async (courseId: number) => {
     return apiCall(`/courses/${courseId}/peers`, {
       method: 'GET',
@@ -218,7 +215,6 @@ export const groupsAPI = {
     });
   },
 
-  // Create new group
   createGroup: async (groupData: any) => {
     return apiCall('/groups', {
       method: 'POST',
@@ -227,7 +223,6 @@ export const groupsAPI = {
     });
   },
 
-  // Update group
   updateGroup: async (groupId: number, groupData: any) => {
     return apiCall(`/groups/${groupId}`, {
       method: 'PUT',
@@ -236,7 +231,6 @@ export const groupsAPI = {
     });
   },
 
-  // Delete group
   deleteGroup: async (groupId: number) => {
     return apiCall(`/groups/${groupId}`, {
       method: 'DELETE',
@@ -244,7 +238,6 @@ export const groupsAPI = {
     });
   },
 
-  // Get user's groups
   getMyGroups: async () => {
     return apiCall('/groups/my-groups', {
       method: 'GET',
@@ -252,7 +245,6 @@ export const groupsAPI = {
     });
   },
 
-  // Get recommended groups
   getRecommendedGroups: async () => {
     return apiCall('/groups/recommended', {
       method: 'GET',
@@ -260,7 +252,6 @@ export const groupsAPI = {
     });
   },
 
-  // Join group
   joinGroup: async (groupId: number) => {
     return apiCall(`/groups/${groupId}/join`, {
       method: 'POST',
@@ -268,7 +259,6 @@ export const groupsAPI = {
     });
   },
 
-  // Leave group
   leaveGroup: async (groupId: number) => {
     return apiCall(`/groups/${groupId}/leave`, {
       method: 'POST',
@@ -276,7 +266,6 @@ export const groupsAPI = {
     });
   },
 
-  // Get group members
   getGroupMembers: async (groupId: number) => {
     return apiCall(`/groups/${groupId}/members`, {
       method: 'GET',
@@ -284,7 +273,6 @@ export const groupsAPI = {
     });
   },
 
-  // Get pending join requests
   getPendingRequests: async (groupId: number) => {
     return apiCall(`/groups/${groupId}/pending-requests`, {
       method: 'GET',
@@ -292,7 +280,6 @@ export const groupsAPI = {
     });
   },
 
-  // Handle join request (approve/reject)
   handleJoinRequest: async (groupId: number, userId: number, status: string) => {
     return apiCall(`/groups/${groupId}/requests/${userId}`, {
       method: 'POST',
@@ -312,4 +299,72 @@ export const groupsAPI = {
     headers: getAuthHeaders(),
   });
 },
+};
+
+// Chat API calls
+export const chatAPI = {
+  // Get message history
+  getMessages: async (groupId: number, page: number = 0, size: number = 50) => {
+    return apiCall(`/chat/${groupId}/messages?page=${page}&size=${size}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  uploadFile: async (groupId: number, file: File, caption?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/chat/${groupId}/upload`, {
+      method: 'POST',
+      headers: getAuthHeadersMultipart(),
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Upload failed: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  shareLink: async (groupId: number, url: string, title?: string) => {
+    return apiCall(`/chat/${groupId}/share-link`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ url, title }),
+    });
+  },
+};
+
+export const downloadFile = async (fileUrl: string, fileName: string) => {
+  try {
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const response = await fetch(fileUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Download failed:', error);
+    throw error;
+  }
 };

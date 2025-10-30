@@ -39,7 +39,12 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors().and().csrf().disable()
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/auth/**", "/api/courses", "/swagger-ui/**", "/v3/api-docs/**", "/api/groups", "/api/groups/{groupId}").permitAll()
+                        // public endpoints
+                        .requestMatchers("/api/auth/**", "/api/courses", "/swagger-ui/**",
+                                "/v3/api-docs/**", "/api/groups", "/api/groups/{groupId}",
+                                "/ws/**", "/ws").permitAll()
+                        // chat endpoints with authentication
+                        .requestMatchers("/api/chat/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { BookOpen, Plus, Minus, Search, Loader } from 'lucide-react';
 import { coursesAPI } from '../services/api';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface CourseManagementProps {
   onLogout: () => void;
@@ -61,12 +62,11 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
     try {
       
       await coursesAPI.enrollInCourse(courseId);
-      // Refresh both lists
       await fetchCourses(searchTerm);
       await fetchEnrolledCourses();
+      toast.success("Enrolled Successfully!");
     } catch (error: any) {
-      console.error('Enrollment failed:', error);
-      alert(error.message || 'Failed to enroll in course');
+      toast.error(error.message || 'Failed to enroll in course');
     } finally {
       setIsEnrolling(null);
     }
@@ -76,12 +76,11 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
     setIsEnrolling(courseId);
     try {
       await coursesAPI.unenrollFromCourse(courseId);
-      // Refresh both lists
+      toast.success("Unenrolled Successfully!");
       await fetchCourses(searchTerm);
       await fetchEnrolledCourses();
     } catch (error: any) {
-      console.error('Unenrollment failed:', error);
-      alert(error.message || 'Failed to unenroll from course');
+      toast.error(error.message || 'Failed to unenroll from course');
     } finally {
       setIsEnrolling(null);
     }
@@ -249,6 +248,7 @@ const CourseManagement = ({ onLogout }: CourseManagementProps) => {
           </div>
         </div>
       </div>
+      <Toaster/>
     </div>
   );
 };
