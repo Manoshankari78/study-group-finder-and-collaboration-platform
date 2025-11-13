@@ -38,18 +38,18 @@ interface User {
 
 interface GroupMember {
   id: number;
-  user: User;
+  name: string;
+  email: string;
+  avatarUrl?: string;
   role: string;
-  status: string;
-  joinedAt: string;
 }
 
 const GroupDetail = ({ onLogout }: GroupDetailProps) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [group, setGroup] = useState<Group | null>(null);
-  const [members, setMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoined, setIsJoined] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -231,7 +231,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
               isAdmin && (
                 <Link
                   to={`/groups/${group?.id}/edit`}
-                  className="bg-gradient-to-r from-purple-500 to-purple-600 w-full md:w-auto hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 shadow-lg"
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 w-full md:w-auto hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex justify-center items-center space-x-2 shadow-lg"
                 >
                   <Settings className="h-5 w-5" />
                   <span>Edit Group</span>
@@ -415,7 +415,7 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
                           <p className="text-gray-800 font-medium">{member.name}</p>
-                          {member.id === group.createdBy.id && (
+                          {member.role === 'ADMIN' && (
                             <Crown className="h-4 w-4 text-yellow-500" />
                           )}
                         </div>
@@ -451,9 +451,9 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                       {pendingRequests.map((request) => (
                         <div key={request.id} className="flex flex-col md:flex-row md:gap-0 gap-2 md:items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
                           <div className="flex items-center space-x-3">
-                            {request.user.avatarUrl ?
+                            {request.avatarUrl ?
                               <div className='h-10 w-10'>
-                                <img src={request.user.avatarUrl} className='h-full w-full rounded-full object-cover' />
+                                <img src={request.avatarUrl} className='h-full w-full rounded-full object-cover' />
                               </div>
                               :
                               <div className='p-2 bg-orange-500'>
@@ -461,23 +461,22 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                               </div>
                             }
                             <div>
-                              <p className="text-gray-800 font-medium">{request.user.name}</p>
+                              <p className="text-gray-800 font-medium">{request.name}</p>
                               <div className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
                                 <Mail className="h-3 w-3 flex-shrink-0" />
-                                <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{request.user.email}</p>
+                                <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{request.email}</p>
                               </div>
-                              <p className="text-orange-600 text-xs">Requested on {new Date(request.joinedAt).toLocaleDateString()}</p>
                             </div>
                           </div>
                           <div className="flex justify-center space-x-2">
                             <button
-                              onClick={() => handleApproveRequest(request.user.id)}
+                              onClick={() => handleApproveRequest(request.id)}
                               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
                             >
                               <span>Approve</span>
                             </button>
                             <button
-                              onClick={() => handleRejectRequest(request.user.id)}
+                              onClick={() => handleRejectRequest(request.id)}
                               className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
                             >
                               <span>Reject</span>
@@ -505,29 +504,36 @@ const GroupDetail = ({ onLogout }: GroupDetailProps) => {
                 <h2 className="text-lg font-bold text-gray-800 font-inter">Quick Actions</h2>
               </div>
               <div className="p-6 space-y-3">
-                <Link
-                  to={`/groups/${group.id}/files`}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>View Files</span>
-                </Link>
-                <button
-                  onClick={handleScheduleEvent}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>Schedule Event</span>
-                </button>
+                {
+                  isJoined && (
+                    <Link
+                      to={`/groups/${group.id}/files`}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>View Files</span>
+                    </Link>
+                  )
+                }
                 {isAdmin && (
-                  <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
+                  <Link
+                    to={`/groups/${group.id}/create-event`}
+                    className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
                   >
-                    <UserPlus className="h-4 w-4" />
-                    <span>Invite Members</span>
-                  </button>
+                    <Calendar className="h-4 w-4" />
+                    <span>Schedule Event</span>
+                  </Link>
                 )}
+
+
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-xl font-medium transition-colors flex items-center space-x-2 justify-center"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Invite Members</span>
+                </button>
+
               </div>
             </div>
           </div>

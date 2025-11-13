@@ -40,6 +40,7 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
   const [filterCourse, setFilterCourse] = useState('');
   const [filterPrivacy, setFilterPrivacy] = useState('');
   const [filterSize, setFilterSize] = useState('');
+  const [filterMyGroups, setFilterMyGroups] = useState(false); // New state for my groups filter
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +98,6 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
     }
   };
 
-  // Add this function to check membership for all groups
   const checkAllGroupsMembership = async (groupsData: Group[]) => {
     try {
       const statusPromises = groupsData.map(async (group) => {
@@ -122,7 +122,7 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
     try {
       const response = await groupsAPI.joinGroup(groupId);
 
-      // Update membership status for this specific group
+      // update membership status for this specific group
       const newStatus = privacy === 'PUBLIC' ? 'ACTIVE' : 'PENDING';
       setMembershipStatus(prev => ({
         ...prev,
@@ -131,7 +131,6 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
 
       if (privacy === 'PUBLIC') {
         toast.success("Successfully joined the group!");
-        fetchGroups(); // Refresh groups to update member count
       } else {
         toast.success('Join request sent!');
       }
@@ -159,6 +158,11 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
     return `${course.courseCode} - ${course.courseName}`;
   };
 
+  // Check if user is a member of a group
+  const isUserMember = (groupId: number) => {
+    return membershipStatus[groupId] === 'ACTIVE';
+  };
+
   const filteredGroups = groups.filter(group => {
     const matchesPrivacy = !filterPrivacy || group.privacy === filterPrivacy;
     const matchesSize = !filterSize || (
@@ -167,8 +171,10 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
           filterSize === 'large' ? group.currentMembers > 15 :
             filterSize === 'available' ? group.currentMembers < group.maxMembers : true
     );
+    
+    const matchesMyGroups = !filterMyGroups || isUserMember(group.id);
 
-    return matchesPrivacy && matchesSize;
+    return matchesPrivacy && matchesSize && matchesMyGroups;
   });
 
   return (
@@ -196,7 +202,7 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
 
         {/* Search and Filters */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
@@ -239,6 +245,7 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
                 <option value="PRIVATE">Private</option>
               </select>
             </div>
+
             {/* Size Filter */}
             <div>
               <select
@@ -250,8 +257,20 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
                 <option value="small">Small (1-5 members)</option>
                 <option value="medium">Medium (6-15 members)</option>
                 <option value="large">Large (16+ members)</option>
-                <option value="available">Has Available Slots</option>
               </select>
+            </div>
+
+            {/* My Groups Filter */}
+            <div className="flex items-center">
+              <label className="flex items-center space-x-2 cursor-pointer bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 w-full h-full">
+                <input
+                  type="checkbox"
+                  checked={filterMyGroups}
+                  onChange={(e) => setFilterMyGroups(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 accent-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <span className="text-gray-800 text-sm">My Groups</span>
+              </label>
             </div>
           </div>
         </div>
@@ -280,6 +299,12 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
                       <Lock className="h-4 w-4 text-gray-500" />
                     ) : (
                       <Globe className="h-4 w-4 text-green-500" />
+                    )}
+                    {/* Show joined badge if user is a member */}
+                    {isUserMember(group.id) && (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                        Joined
+                      </span>
                     )}
                   </div>
                 </div>
@@ -327,21 +352,35 @@ const GroupDiscovery = ({ onLogout }: GroupDiscoveryProps) => {
         {!isLoading && filteredGroups.length === 0 && (
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">No groups found</h3>
-            <p className="text-gray-600 mb-6">Try adjusting your search criteria or create a new group.</p>
-            <Link
-              to="/groups/create"
-              className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 inline-flex items-center space-x-2 shadow-lg"
-            >
-              <Plus className="h-5 w-5" />
-              <span>Create New Group</span>
-            </Link>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              {filterMyGroups ? 'No groups joined yet' : 'No groups found'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {filterMyGroups 
+                ? "You haven't joined any groups yet. Explore available groups below."
+                : 'Try adjusting your search criteria or create a new group.'}
+            </p>
+            {filterMyGroups ? (
+              <button
+                onClick={() => setFilterMyGroups(false)}
+                className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 inline-flex items-center space-x-2 shadow-lg"
+              >
+                <span>Browse All Groups</span>
+              </button>
+            ) : (
+              <Link
+                to="/groups/create"
+                className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 inline-flex items-center space-x-2 shadow-lg"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Create New Group</span>
+              </Link>
+            )}
           </div>
         )}
       </div>
       <Toaster />
     </div>
-
   );
 };
 

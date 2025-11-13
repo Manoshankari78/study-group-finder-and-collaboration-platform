@@ -164,23 +164,36 @@ public class GroupService {
         GroupMember groupMember = groupMemberRepository.findByGroupAndUser(group, user)
                 .orElseThrow(() -> new RuntimeException("You are not a member of this group"));
 
-        // If user is admin and last admin, we need special handling
+        // if user is admin
         if (groupMember.getRole() == GroupMemberRole.ADMIN) {
-            List<GroupMember> admins = groupMemberRepository.findByGroup(group).stream()
-                    .filter(member -> member.getRole() == GroupMemberRole.ADMIN && member.getStatus() == GroupMemberStatus.ACTIVE)
+            List<GroupMember> activeAdmins = groupMemberRepository.findByGroup(group).stream()
+                    .filter(member -> member.getRole() == GroupMemberRole.ADMIN &&
+                            member.getStatus() == GroupMemberStatus.ACTIVE)
                     .collect(Collectors.toList());
 
-            if (admins.size() == 1 && admins.get(0).getId().equals(groupMember.getId())) {
-                // This is the last admin - delete the group
-                groupMemberRepository.deleteAll(groupMemberRepository.findByGroup(group));
-                groupRepository.delete(group);
-                return;
+            // promote another member
+            if (activeAdmins.size() == 1 && activeAdmins.get(0).getId().equals(groupMember.getId())) {
+                // Find another active member to promote (excluding the leaving admin)
+                List<GroupMember> activeMembers = groupMemberRepository.findByGroup(group).stream()
+                        .filter(member -> member.getStatus() == GroupMemberStatus.ACTIVE &&
+                                !member.getId().equals(groupMember.getId()))
+                        .collect(Collectors.toList());
+
+                if (!activeMembers.isEmpty()) {
+                    GroupMember newAdmin = activeMembers.get(0);
+                    newAdmin.setRole(GroupMemberRole.ADMIN);
+                    groupMemberRepository.save(newAdmin);
+                } else {
+                    groupMemberRepository.deleteAll(groupMemberRepository.findByGroup(group));
+                    groupRepository.delete(group);
+                    return;
+                }
             }
         }
 
         groupMemberRepository.delete(groupMember);
 
-        // Update member count if active member
+        // update member count
         if (groupMember.getStatus() == GroupMemberStatus.ACTIVE) {
             group.setCurrentMembers(group.getCurrentMembers() - 1);
             groupRepository.save(group);
@@ -234,6 +247,24 @@ public class GroupService {
                 .orElseThrow(() -> new RuntimeException("Group not found"));
         return groupMemberRepository.findActiveMembersByGroup(group);
     }
+
+    public List<Map<String, Object>> getGroupMembersWithRoles(Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+
+        List<GroupMember> groupMembers = groupMemberRepository.findByGroupAndStatus(group, GroupMemberStatus.ACTIVE);
+
+        return groupMembers.stream().map(member -> {
+            Map<String, Object> memberData = new HashMap<>();
+            memberData.put("id", member.getUser().getId());
+            memberData.put("name", member.getUser().getName());
+            memberData.put("email", member.getUser().getEmail());
+            memberData.put("avatarUrl", member.getUser().getAvatarUrl());
+            memberData.put("role", member.getRole().toString());
+            return memberData;
+        }).collect(Collectors.toList());
+    }
+
 
     public List<GroupMember> getPendingRequests(Long groupId, Long adminUserId) {
         Group group = groupRepository.findById(groupId)
