@@ -71,9 +71,9 @@ This platform solves these challenges by providing an integrated environment for
 - ✅ File Sharing
 
 ### Calendar & Scheduling
-- 🚧 Schedule study sessions
-- 🚧 Event reminders
-- 🚧 Group calendar integration
+- ✅ Schedule study sessions
+- ✅ Event reminders and notifications
+- ✅ Calendar integration
 
 *Legend: ✅ Implemented | 🚧 Planned*
 
