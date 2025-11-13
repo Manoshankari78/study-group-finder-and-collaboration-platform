@@ -11,76 +11,90 @@ interface GroupMembersProps {
   onLogout: () => void;
 }
 
-interface User {
+interface GroupMember {
   id: number;
   name: string;
   email: string;
   avatarUrl?: string;
+  role: string;
 }
 
 const GroupMembers = ({ onLogout }: GroupMembersProps) => {
   const { id } = useParams();
   const { user: currentUser } = useAuth();
-  const [members, setMembers] = useState<User[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [group, setGroup] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
-      fetchGroupMembers();
+      fetchGroupData();
       checkUserRole();
     }
   }, [id]);
 
-  const fetchGroupMembers = async () => {
+  const fetchGroupData = async () => {
     try {
-      const response = await groupsAPI.getGroupMembers(parseInt(id!));
-      setMembers(response.members || []);
+      const response = await groupsAPI.getGroup(parseInt(id!));
+      setGroup(response.group);
+      await fetchGroupMembers();
     } catch (error) {
-      console.error('Failed to fetch group members:', error);
+      console.error('Failed to fetch group:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchGroupMembers = async () => {
+    try {
+      const response = await groupsAPI.getGroupMembers(parseInt(id!));
+      
+      if (response.members && response.members[0] && response.members[0].role) {
+        setMembers(response.members);
+      }
+    } catch (error) {
+      console.error('Failed to fetch group members:', error);
+    }
+  };
+
   const checkUserRole = async () => {
     try {
-      const response = await groupsAPI.getMyGroups();
-      const myGroups = response.groups || [];
-      const currentGroup = myGroups.find((group: any) => group.id === parseInt(id!));
+      // check if current user is admin
+      const response = await groupsAPI.getMyMembership(parseInt(id!));
       
-      if (currentGroup) {
-        setIsAdmin(currentUser?.id === currentGroup.createdBy.id);
+      if (response.membership) {
+        setIsAdmin(response.membership.role === 'ADMIN');
       }
     } catch (error) {
       console.error('Failed to check user role:', error);
     }
   };
 
-const handleRemoveMember = async (userId: number) => {
-  const confirmed = await new Promise((resolve) => {
-    toast(t => (
-      <div className='flex flex-col gap-2 justify-between'>
-        Are you sure you want to remove this member? 
-        <div className='flex items-center justify-evenly'>
-          <button onClick={() => { resolve(true); toast.dismiss(t.id); }} className="text-red-600">Yes</button>
-          <button onClick={() => { resolve(false); toast.dismiss(t.id); }}>No</button>
+  const handleRemoveMember = async (userId: number) => {
+    const confirmed = await new Promise((resolve) => {
+      toast(t => (
+        <div className='flex flex-col gap-2 justify-between'>
+          Are you sure you want to remove this member? 
+          <div className='flex items-center justify-evenly'>
+            <button onClick={() => { resolve(true); toast.dismiss(t.id); }} className="text-red-600">Yes</button>
+            <button onClick={() => { resolve(false); toast.dismiss(t.id); }}>No</button>
+          </div>
         </div>
-      </div>
-    ), { duration: Infinity });
-  });
+      ), { duration: Infinity });
+    });
 
-  if (!confirmed) return;
+    if (!confirmed) return;
 
-  try {
-    await groupsAPI.removeMember(parseInt(id!), userId);
-    toast.success('Member removed successfully');
-    fetchGroupMembers(); // Refresh the members list
-  } catch (error: any) {
-    toast.error(error.message || 'Failed to remove member');
-  }
-};
+    try {
+      await groupsAPI.removeMember(parseInt(id!), userId);
+      toast.success('Member removed successfully');
+      fetchGroupMembers(); 
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to remove member');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -99,7 +113,6 @@ const handleRemoveMember = async (userId: number) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       <Navbar onLogout={onLogout} />
         
-      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link
@@ -107,7 +120,7 @@ const handleRemoveMember = async (userId: number) => {
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4 group"
           >
             <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Groups</span>
+            <span>Back to Group</span>
           </Link>
         </div>
         <div className="mb-8">
@@ -117,7 +130,6 @@ const handleRemoveMember = async (userId: number) => {
           <p className="text-gray-600">
             Manage group members and permissions
           </p>
-          
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg">
@@ -127,7 +139,7 @@ const handleRemoveMember = async (userId: number) => {
                 Members ({members.length})
               </h2>
               {isAdmin && (
-                <button  onClick={() => setShowInviteModal(true)} className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2">
+                <button onClick={() => setShowInviteModal(true)} className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2">
                   <UserPlus className="h-4 w-4" />
                   <span>Invite Member</span>
                 </button>
@@ -141,36 +153,37 @@ const handleRemoveMember = async (userId: number) => {
                 <div key={member.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <div className="flex items-center space-x-4">
                     <div className="bg-gradient-to-r from-blue-500 to-teal-500 rounded-full">
-                      {member.avatarUrl?
-                      <div className='h-10 w-10'>
-                        <img src={member.avatarUrl} className='h-full w-full rounded-full object-cover'/>
-                      </div>
-                          : 
-                          <div className='p-3'>
-                            <User className='h-5 w-5 text-white'/>
-                          </div>  
-                    }
+                      {member.avatarUrl ? (
+                        <div className='h-10 w-10'>
+                          <img src={member.avatarUrl} className='h-full w-full rounded-full object-cover'/>
+                        </div>
+                      ) : (
+                        <div className='p-3'>
+                          <User className='h-5 w-5 text-white'/>
+                        </div>  
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
                         <h3 className="font-semibold text-gray-800">{member.name}</h3>
-                        {isAdmin && member.id === currentUser?.id && (
+                        {member.role === 'ADMIN' && (
                           <Crown className="h-4 w-4 text-yellow-500" />
                         )}
                       </div>
                       <div className="text-gray-600 text-sm flex items-center space-x-1 mt-1">
-                          <Mail className="h-3 w-3 flex-shrink-0" />
-                          <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{member.email}</p>
-                        </div>
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <p className='md:max-w-[300px] max-w-[175px] overflow-clip'>{member.email}</p>
+                      </div>
                     </div>
                   </div>
 
-                  {isAdmin && member.id !== currentUser?.id && (
+                  {isAdmin && member.id !== currentUser?.id && member.role !== 'ADMIN' && (
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleRemoveMember(member.id)}
                         className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-                      > X
+                      >
+                        X
                       </button>
                     </div>
                   )}
@@ -187,6 +200,7 @@ const handleRemoveMember = async (userId: number) => {
             )}
           </div>
         </div>
+
         {/* Invite Member Modal */}
         {showInviteModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">

@@ -32,4 +32,14 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
 
     @Query("SELECT gm.user FROM GroupMember gm WHERE gm.group = :group AND gm.status = 'ACTIVE'")
     List<User> findActiveMembersByGroup(@Param("group") Group group);
+
+    Optional<GroupMember> findByGroupIdAndUserId(Long groupId, Long userId);
+
+    List<GroupMember> findByGroupIdAndStatus(Long groupId, GroupMemberStatus status);
+
+    @Query("SELECT gm FROM GroupMember gm WHERE gm.group.id = :groupId AND gm.status = 'ACTIVE'")
+    List<GroupMember> findActiveMembersByGroupId(@Param("groupId") Long groupId);
+
+    @Query("SELECT gm FROM GroupMember gm WHERE gm.group.id = :groupId AND gm.user.id = :userId")
+    Optional<GroupMember> findByGroupIdAndUserIdWithStatus(@Param("groupId") Long groupId, @Param("userId") Long userId);
 }

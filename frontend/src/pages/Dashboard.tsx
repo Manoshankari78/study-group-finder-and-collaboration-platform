@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import { Users, Calendar, MessageSquare, TrendingUp, User, Plus, BookOpen, Clock, Star, Loader } from 'lucide-react';
+import { Users, Calendar, MessageSquare, TrendingUp, User, Plus, BookOpen, Clock, Star, Loader, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { coursesAPI, groupsAPI } from '../services/api';
+import { coursesAPI, eventsAPI, groupsAPI } from '../services/api';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -42,14 +42,6 @@ interface Peer {
   commonCourses: Course[];
 }
 
-interface Activity {
-  type: string;
-  text: string;
-  time: string;
-  icon: any;
-  color: string;
-}
-
 interface Event {
   id: number;
   title: string;
@@ -58,21 +50,13 @@ interface Event {
 }
 
 const Dashboard = ({ onLogout }: DashboardProps) => {
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const { user } = useAuth();
   
   const [joinedGroups, setJoinedGroups] = useState<Group[]>([]);
   const [coursePeers, setCoursePeers] = useState<Peer[]>([]);
-  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    joinedGroups: 0,
-    upcomingEvents: 0,
-    newMessages: 0,
-    studyProgress: 0
-  });
+  const [courses, setCourses] = useState<Course[]>([]);
 
   
   useEffect(() => {
@@ -82,27 +66,19 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
         
         const coursesResponse = await coursesAPI.getMyCourses();
         const enrolledCourses = coursesResponse.courses || [];
+        setCourses(enrolledCourses);
         
         const peersResponse = await coursesAPI.getCoursePeers();
         const peers = peersResponse.peers || [];
-        setCoursePeers(peers.slice(0, 4)); // Show only 4 peers in dashboard
+        setCoursePeers(peers);
         
         const groupsResponse = await groupsAPI.getMyGroups();
         const groups = groupsResponse.groups || [];
-        setJoinedGroups(groups.slice(0, 3)); 
+        setJoinedGroups(groups); 
         
-        // Calculate stats
-        setStats({
-          joinedGroups: groups.length,
-          upcomingEvents: 5, // yet to implement events API
-          newMessages: 0, // yet to implement messages API
-          studyProgress: calculateStudyProgress(enrolledCourses)
-        });
-
-        
-        generateRecentActivity(peers, groups, enrolledCourses);
-        
-        generateUpcomingEvents();
+        const eventResponse = await eventsAPI.getMyEvents();
+        const events = eventResponse.events || [];
+        setUpcomingEvents(events);
 
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -113,58 +89,6 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
 
     fetchDashboardData();
   }, []);
-
-  const calculateStudyProgress = (courses: any[]) => {
-    if (courses.length === 0) return 0;
-    
-    const baseProgress = Math.min(courses.length * 15, 89);
-    return baseProgress;
-  };
-
-  const generateRecentActivity = (peers: Peer[], groups: Group[], courses: any[]) => {
-    const activities: Activity[] = [];
-    
-    if (peers.length > 0) {
-      activities.push({
-        type: 'peer',
-        text: `${peers[0].user.name} is taking the same courses as you`,
-        time: '1 hour ago',
-        icon: Users,
-        color: 'text-blue-500'
-      });
-    }
-    
-    if (groups.length > 0) {
-      activities.push({
-        type: 'group',
-        text: `New discussion started in ${groups[0].name}`,
-        time: '2 hours ago',
-        icon: MessageSquare,
-        color: 'text-green-500'
-      });
-    }
-    
-    if (courses.length > 0) {
-      activities.push({
-        type: 'course',
-        text: `You enrolled in ${courses[0].courseName}`,
-        time: '1 day ago',
-        icon: BookOpen,
-        color: 'text-purple-500'
-      });
-    }
-
-    setRecentActivity(activities);
-  };
-
-  const generateUpcomingEvents = () => {
-    const events: Event[] = [
-      { id: 1, title: 'Study Session', time: 'Today, 7:00 PM', group: 'Study Group' },
-      { id: 2, title: 'Group Meeting', time: 'Tomorrow, 3:00 PM', group: 'Course Discussion' },
-      { id: 3, title: 'Project Review', time: 'Friday, 2:00 PM', group: 'Project Team' },
-    ];
-    setUpcomingEvents(events);
-  };
 
   const getGroupColor = (index: number) => {
     const colors = [
@@ -211,69 +135,18 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold font-inter mb-3">
-                  Welcome back, {user?.name}! 👋
+                  Welcome, {user?.name}!👋
               </h1>
               <p className="text-blue-100 font-roboto text-lg">
-                {stats.joinedGroups > 0 
-                  ? `Ready to continue your learning journey? You have ${stats.joinedGroups} active study groups and ${stats.upcomingEvents} upcoming events.`
+                {joinedGroups.length > 0 
+                  ? `Ready to continue your learning journey? You have ${joinedGroups.length} active study groups and ${courses.length} enrolled courses.`
                   : 'Get started by enrolling in courses and joining study groups!'}
               </p>
             </div>
             <div className="hidden lg:block">
-              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6">
-                <BookOpen className="h-16 w-16 text-white mx-auto mb-2" />
-                <p className="text-center text-sm">Keep Learning!</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-            <div className="flex items-center">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 rounded-xl shadow-lg">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-3xl font-bold text-gray-800">{stats.joinedGroups}</p>
-                <p className="text-gray-500 text-sm font-medium">Joined Groups</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-            <div className="flex items-center">
-              <div className="bg-gradient-to-r from-green-500 to-green-600 p-3 rounded-xl shadow-lg">
-                <Calendar className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-3xl font-bold text-gray-800">{stats.upcomingEvents}</p>
-                <p className="text-gray-500 text-sm font-medium">Upcoming Events</p>
-              </div>
-            </div>
-          </div>
-
-          {/* <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-            <div className="flex items-center">
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3 rounded-xl shadow-lg">
-                <MessageSquare className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-3xl font-bold text-gray-800">{stats.newMessages}</p>
-                <p className="text-gray-500 text-sm font-medium">New Messages</p>
-              </div>
-            </div>
-          </div> */}
-
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-            <div className="flex items-center">
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3 rounded-xl shadow-lg">
-                <TrendingUp className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-3xl font-bold text-gray-800">{stats.studyProgress}%</p>
-                <p className="text-gray-500 text-sm font-medium">Study Progress</p>
+              <div className="bg-white flex flex-col items-center justify-center rounded-2xl p-6">
+                <img src="/logo.png" className='h-24 w-24' />
+                <p className="font-inter font-bold text-sm bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">Keep Learning</p>
               </div>
             </div>
           </div>
@@ -389,7 +262,7 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                       )}
                       <div className="flex-1">
                         <p className="text-gray-800 font-medium">{peer.user.name}</p>
-                        <p className="text-gray-500 text-sm">{peer.user.universityName || 'Student'}</p>
+                        <p className="text-gray-500 text-xs">{peer.user.email}</p>
                         {peer.commonCourses && peer.commonCourses.length > 0 && (
                           <div className="flex items-center space-x-1 mt-1">
                             <BookOpen className="h-3 w-3 text-gray-400" />
@@ -399,41 +272,13 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
                           </div>
                         )}
                       </div>
+                      <a href={`mailto:${peer.user.email}`}>
                       <button className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 transform hover:scale-105">
                         Connect
                       </button>
+                      </a>
                     </div>
                   ))
-                )}
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-800 font-inter">Recent Activity</h2>
-              </div>
-              <div className="p-6 space-y-4">
-                {recentActivity.length === 0 ? (
-                  <div className="text-center py-4">
-                    <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No recent activity</p>
-                  </div>
-                ) : (
-                  recentActivity.map((activity, index) => {
-                    const Icon = activity.icon;
-                    return (
-                      <div key={index} className="flex items-start space-x-3">
-                        <div className={`p-2 rounded-xl bg-gray-100`}>
-                          <Icon className={`h-4 w-4 ${activity.color}`} />
-                        </div>
-                        <div>
-                          <p className="text-gray-800 text-sm font-medium">{activity.text}</p>
-                          <p className="text-gray-500 text-xs">{activity.time}</p>
-                        </div>
-                      </div>
-                    );
-                  })
                 )}
               </div>
             </div>

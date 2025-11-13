@@ -368,3 +368,109 @@ export const downloadFile = async (fileUrl: string, fileName: string) => {
     throw error;
   }
 };
+
+export const eventsAPI = {
+  createEvent: async (eventData: any) => {
+    return apiCall('/events', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(eventData),
+    });
+  },
+
+  getMyEvents: async () => {
+    return apiCall('/events/my-events', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  getGroupEvents: async (groupId: number) => {
+    return apiCall(`/events/group/${groupId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  getEvent: async (eventId: number) => {
+    return apiCall(`/events/${eventId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  deleteEvent: async (eventId: number) => {
+    return apiCall(`/events/${eventId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+};
+
+export const preferencesAPI = {
+  getPreferences: async () => {
+    return apiCall('/user/preferences', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  updatePreferences: async (preferences: any) => {
+    return apiCall('/user/preferences', {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(preferences),
+    });
+  },
+};
+
+export const notificationsAPI = {
+  getUserNotifications: async () => {
+    return apiCall('/notifications', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  getUnreadNotifications: async () => {
+    return apiCall('/notifications/unread', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  getUnreadCount: async () => {
+    return apiCall('/notifications/unread-count', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  markAsRead: async (notificationId: number) => {
+    return apiCall(`/notifications/${notificationId}/read`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  markAllAsRead: async () => {
+    return apiCall('/notifications/mark-all-read', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  deleteNotification: async (notificationId: number) => {
+    return apiCall(`/notifications/${notificationId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  deleteAllNotifications: async () => {
+    return apiCall('/notifications', {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+};

@@ -1,63 +1,169 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Bell, MessageSquare, Calendar, Users, UserPlus, ArrowLeft, Check, CheckCheck, Filter, Search, X } from 'lucide-react';
+import { 
+  Bell, 
+  MessageSquare, 
+  Calendar, 
+  Users, 
+  UserPlus, 
+  ArrowLeft, 
+  Check, 
+  CheckCheck, 
+  Filter, 
+  Search, 
+  X,
+  Trash2,
+  Eye,
+  EyeOff,
+  Clock
+} from 'lucide-react';
+import { useNotifications } from '../contexts/NotificationContext';
+import { eventsAPI } from '../services/api';
+import toast, { Toaster } from 'react-hot-toast';
 
 interface NotificationsPageProps {
   onLogout: () => void;
 }
 
+interface EventData {
+  id: number;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  group: {
+    id: number;
+    name: string;
+  };
+}
+
 const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'New message in CS 101 Study Group', message: 'Sarah: "Hey everyone! Did anyone finish the problem set for Chapter 3?"', time: '5 min ago', type: 'message', unread: true, icon: MessageSquare, color: 'text-blue-500', bgColor: 'bg-blue-50' },
-    { id: 2, title: 'Calculus study session tomorrow at 3 PM', message: 'Don\'t forget about our calculus review session in Library Room 201', time: '1 hour ago', type: 'event', unread: true, icon: Calendar, color: 'text-green-500', bgColor: 'bg-green-50' },
-    { id: 3, title: 'Sarah joined Physics Lab Partners', message: 'Welcome Sarah to the Physics Lab Partners group!', time: '2 hours ago', type: 'join', unread: true, icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-50' },
-    { id: 4, title: 'Assignment reminder: Data Structures homework due Friday', message: 'Complete the binary tree implementation assignment', time: '1 day ago', type: 'reminder', unread: false, icon: Calendar, color: 'text-orange-500', bgColor: 'bg-orange-50' },
-    { id: 5, title: 'Group invitation from Advanced Calculus Masters', message: 'You\'ve been invited to join the Advanced Calculus Masters study group', time: '2 days ago', type: 'invitation', unread: false, icon: UserPlus, color: 'text-teal-500', bgColor: 'bg-teal-50' },
-    { id: 6, title: 'New study material shared in Physics Lab', message: 'Mike shared "Quantum Mechanics Notes" in the group', time: '3 days ago', type: 'message', unread: false, icon: MessageSquare, color: 'text-blue-500', bgColor: 'bg-blue-50' },
-    { id: 7, title: 'Weekly study session scheduled', message: 'CS 101 weekly review session every Tuesday at 6 PM', time: '1 week ago', type: 'event', unread: false, icon: Calendar, color: 'text-green-500', bgColor: 'bg-green-50' }
-  ]);
-
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification, 
+    clearAll 
+  } = useNotifications();
+  
+  const [events, setEvents] = useState<EventData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const [filterType, setFilterType] = useState<'all' | 'unread' | 'read'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
-  const totalCount = notifications.length;
-  const readCount = totalCount - unreadCount;
+  useEffect(() => {
+    fetchUpcomingEvents();
+  }, []);
+
+  const fetchUpcomingEvents = async () => {
+    try {
+      const response = await eventsAPI.getMyEvents();
+      setEvents(response.events || []);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'event':
+        return Calendar;
+      case 'reminder':
+        return Clock;
+      case 'message':
+        return MessageSquare;
+      case 'join':
+        return Users;
+      case 'invitation':
+        return UserPlus;
+      default:
+        return Bell;
+    }
+  };
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case 'event':
+        return 'text-blue-500 bg-blue-50';
+      case 'reminder':
+        return 'text-orange-500 bg-orange-50';
+      case 'message':
+        return 'text-green-500 bg-green-50';
+      case 'join':
+        return 'text-purple-500 bg-purple-50';
+      case 'invitation':
+        return 'text-teal-500 bg-teal-50';
+      default:
+        return 'text-gray-500 bg-gray-50';
+    }
+  };
 
   const filteredNotifications = notifications.filter(notification => {
-    const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         notification.message.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || 
-                         (filterType === 'unread' && notification.unread) ||
-                         (filterType === 'read' && !notification.unread) ||
-                         notification.type === filterType;
+    const matchesSearch = 
+      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = 
+      filterType === 'all' || 
+      (filterType === 'unread' && !notification.isRead) ||
+      (filterType === 'read' && notification.isRead);
     
     return matchesSearch && matchesFilter;
   });
 
   const handleMarkAsRead = (notificationId: number) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId ? { ...notif, unread: false } : notif
-      )
+    markAsRead(notificationId);
+    toast.success('Marked as read');
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsRead();
+    toast.success('All notifications marked as read');
+  };
+
+  const handleRemoveNotification = (notificationId: number) => {
+    removeNotification(notificationId);
+    toast.success('Notification removed');
+  };
+
+  const handleClearAll = () => {
+    clearAll();
+    toast.success('All notifications cleared');
+  };
+
+  const formatTime = (date: Date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    
+    return date.toLocaleDateString();
+  };
+
+  const unreadNotifications = notifications.filter(n => !n.isRead);
+  const readNotifications = notifications.filter(n => n.isRead);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
+        <Navbar onLogout={onLogout} />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        </div>
+      </div>
     );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(notif => ({ ...notif, unread: false })));
-  };
-
-  const filterOptions = [
-    { value: 'all', label: 'All Notifications', count: totalCount },
-    { value: 'unread', label: 'Unread', count: unreadCount },
-    { value: 'read', label: 'Read', count: readCount },
-    { value: 'message', label: 'Messages', count: notifications.filter(n => n.type === 'message').length },
-    { value: 'event', label: 'Events', count: notifications.filter(n => n.type === 'event').length },
-    { value: 'join', label: 'New Members', count: notifications.filter(n => n.type === 'join').length },
-    { value: 'invitation', label: 'Invitations', count: notifications.filter(n => n.type === 'invitation').length }
-  ];
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
@@ -84,15 +190,27 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
               </p>
             </div>
             
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-6 py-3 rounded-2xl font-medium transition-all duration-200 flex items-center space-x-2 transform hover:scale-105 shadow-lg"
-              >
-                <CheckCheck className="h-5 w-5" />
-                <span>Mark All Read</span>
-              </button>
-            )}
+            <div className="flex flex-wrap gap-3">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2 transform hover:scale-105 shadow-lg"
+                >
+                  <CheckCheck className="h-4 w-4" />
+                  <span>Mark All Read</span>
+                </button>
+              )}
+              
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center space-x-2 transform hover:scale-105 shadow-lg"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Clear All</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -104,7 +222,7 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
                 <Bell className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-3xl font-bold text-gray-800">{totalCount}</p>
+                <p className="text-3xl font-bold text-gray-800">{notifications.length}</p>
                 <p className="text-gray-600 text-sm font-medium">Total Notifications</p>
               </div>
             </div>
@@ -128,7 +246,7 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
                 <Check className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-3xl font-bold text-gray-800">{readCount}</p>
+                <p className="text-3xl font-bold text-gray-800">{readNotifications.length}</p>
                 <p className="text-gray-600 text-sm font-medium">Read</p>
               </div>
             </div>
@@ -163,23 +281,37 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
           {/* Filter Options */}
           {showFilters && (
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {filterOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setFilterType(option.value)}
-                    className={`p-3 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
-                      filterType === option.value
-                        ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-lg'
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="font-bold">{option.count}</div>
-                      <div className="text-xs">{option.label}</div>
-                    </div>
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+                    filterType === 'all'
+                      ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-lg'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  All ({notifications.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('unread')}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+                    filterType === 'unread'
+                      ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-lg'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Unread ({unreadNotifications.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('read')}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+                    filterType === 'read'
+                      ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white shadow-lg'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Read ({readNotifications.length})
+                </button>
               </div>
             </div>
           )}
@@ -192,8 +324,7 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
               <h2 className="text-2xl font-bold text-gray-800 font-inter">
                 {filterType === 'all' ? 'All Notifications' : 
                  filterType === 'unread' ? 'Unread Notifications' :
-                 filterType === 'read' ? 'Read Notifications' :
-                 filterOptions.find(f => f.value === filterType)?.label || 'Notifications'}
+                 'Read Notifications'}
               </h2>
               <span className="text-gray-500 text-sm">
                 {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? 's' : ''}
@@ -205,40 +336,55 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
             {filteredNotifications.length === 0 ? (
               <div className="p-12 text-center">
                 <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-500 mb-2">No notifications found</h3>
-                <p className="text-gray-400">
-                  {searchTerm ? 'Try adjusting your search terms' : 'You\'re all caught up!'}
+                <h3 className="text-xl font-semibold text-gray-500 mb-2">
+                  {searchTerm ? 'No notifications found' : 'No notifications yet'}
+                </h3>
+                <p className="text-gray-400 mb-4">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Your notifications will appear here'}
                 </p>
+                {!searchTerm && (
+                  <Link
+                    to="/calendar"
+                    className="text-blue-500 hover:text-blue-600 font-medium"
+                  >
+                    Check your calendar for upcoming events
+                  </Link>
+                )}
               </div>
             ) : (
               filteredNotifications.map((notification) => {
-                const Icon = notification.icon;
+                const Icon = getNotificationIcon(notification.type);
                 return (
                   <div
                     key={notification.id}
-                    className={`p-6 hover:bg-gradient-to-r hover:from-blue-50 hover:to-teal-50 transition-all duration-200 ${
-                      notification.unread ? 'bg-gradient-to-r from-blue-50/50 to-teal-50/50' : ''
+                    className={`p-6 transition-all duration-200 group ${
+                      notification.isRead 
+                        ? 'bg-white hover:bg-gray-50' 
+                        : 'bg-blue-50/50 hover:bg-blue-50'
                     }`}
                   >
                     <div className="flex items-start space-x-4">
-                      <div className={`p-3 rounded-2xl ${notification.bgColor} flex-shrink-0 shadow-sm`}>
-                        <Icon className={`h-5 w-5 ${notification.color}`} />
+                      <div className={`p-3 rounded-2xl ${getNotificationColor(notification.type)} flex-shrink-0 shadow-sm`}>
+                        <Icon className="h-5 w-5" />
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className={`font-semibold text-gray-800 ${
-                            notification.unread ? 'font-bold' : ''
-                          }`}>
-                            {notification.title}
-                          </h3>
+                          <div className="flex items-center space-x-3">
+                            <h3 className={`font-semibold text-gray-800 ${
+                              !notification.isRead ? 'font-bold' : ''
+                            }`}>
+                              {notification.title}
+                            </h3>
+                            
+                          </div>
                           
                           <div className="flex items-center space-x-3 ml-4">
-                            {notification.unread && (
+                            {!notification.isRead && (
                               <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full animate-pulse"></div>
                             )}
                             <span className="text-gray-400 text-sm whitespace-nowrap">
-                              {notification.time}
+                              {(new Date(notification.createdAt)).toISOString().slice(0,16).split("T")[0] +" "+ (new Date(notification.createdAt)).toISOString().slice(0,16).split("T")[1]}
                             </span>
                           </div>
                         </div>
@@ -247,14 +393,35 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
                           {notification.message}
                         </p>
                         
-                        {notification.unread && (
+                        <div className="flex items-center space-x-4">
+                          {!notification.isRead && (
+                            <button
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors flex items-center space-x-1 hover:underline"
+                            >
+                              <Check className="h-4 w-4" />
+                              <span>Mark as Read</span>
+                            </button>
+                          )}
+                          
                           <button
-                            onClick={() => handleMarkAsRead(notification.id)}
-                            className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors hover:underline"
+                            onClick={() => handleRemoveNotification(notification.id)}
+                            className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors flex items-center space-x-1 hover:underline"
                           >
-                            Mark as Read
+                            <Trash2 className="h-4 w-4" />
+                            <span>Remove</span>
                           </button>
-                        )}
+
+                          {notification && (
+                            <Link
+                              to={`/calendar`}
+                              className="text-green-600 hover:text-green-700 text-sm font-medium transition-colors flex items-center space-x-1 hover:underline"
+                            >
+                              <ArrowLeft className="h-4 w-4 transform rotate-180" />
+                              <span>View</span>
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -1,26 +1,36 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import CourseManagement from './pages/CourseManagement';
-import GroupDiscovery from './pages/GroupDiscovery';
-import GroupCreation from './pages/GroupCreation';
-import GroupDetail from './pages/GroupDetail';
-import Chat from './pages/Chat';
-import Calendar from './pages/Calendar';
-import NotificationsPage from './pages/NotificationsPage';
-import ProfilePage from './pages/ProfilePage';
-import ResetPassword from './pages/ResetPassword';
-import CoursePeers from './pages/CoursePeers';
-import CourseSpecificPeers from './pages/CourseSpecificPeers';
-import GroupMembers from './pages/GroupMembers';
-import GroupEdit from './pages/GroupEdit';
-import FloatingChatBubble from './components/FloatingChatBubble';
-import GroupFiles from './pages/GroupFiles';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import CourseManagement from "./pages/CourseManagement";
+import GroupDiscovery from "./pages/GroupDiscovery";
+import GroupCreation from "./pages/GroupCreation";
+import GroupDetail from "./pages/GroupDetail";
+import Chat from "./pages/Chat";
+import NotificationsPage from "./pages/NotificationsPage";
+import ProfilePage from "./pages/ProfilePage";
+import ResetPassword from "./pages/ResetPassword";
+import CoursePeers from "./pages/CoursePeers";
+import CourseSpecificPeers from "./pages/CourseSpecificPeers";
+import GroupMembers from "./pages/GroupMembers";
+import GroupEdit from "./pages/GroupEdit";
+import FloatingAssistant from "./components/FloatingAssistant";
+import GroupFiles from "./pages/GroupFiles";
+import EventCreation from "./pages/EventCreation";
+import NotificationPreferences from "./pages/NotificationPreferences";
+import CalendarPage from "./pages/CalendarPage";
+import { NotificationProvider } from './contexts/NotificationContext';
 
-// Protected Route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// protected route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -30,7 +40,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
-// Public Route component (redirect to dashboard if already authenticated)
+// public route component redirect to dashboard if already authenticated
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
@@ -124,7 +134,7 @@ function AppContent() {
             path="/calendar"
             element={
               <ProtectedRoute>
-                <Calendar onLogout={logout} />
+                <CalendarPage onLogout={logout} />
               </ProtectedRoute>
             }
           />
@@ -158,14 +168,16 @@ function AppContent() {
               <ProtectedRoute>
                 <CourseSpecificPeers onLogout={logout} />
               </ProtectedRoute>
-            } />
+            }
+          />
           <Route
             path="/groups/:id/edit"
             element={
               <ProtectedRoute>
                 <GroupEdit onLogout={logout} />
               </ProtectedRoute>
-            } />
+            }
+          />
           <Route
             path="/reset-password"
             element={
@@ -174,10 +186,7 @@ function AppContent() {
               </PublicRoute>
             }
           />
-          <Route
-            path="/"
-            element={<Navigate to="/dashboard" />}
-          />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route
             path="/groups/:groupId/files"
             element={
@@ -186,8 +195,24 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/groups/:groupId/create-event"
+            element={
+              <ProtectedRoute>
+                <EventCreation onLogout={logout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/preferences"
+            element={
+              <ProtectedRoute>
+                <NotificationPreferences onLogout={logout} />
+              </ProtectedRoute>
+              }
+          />
         </Routes>
-        <FloatingChatBubble />
+        <FloatingAssistant />
       </Router>
     </div>
   );
@@ -196,7 +221,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

@@ -75,11 +75,6 @@ const CourseSpecificPeers = ({ onLogout }: CourseSpecificPeersProps) => {
     }
   };
 
-  const handleSendMessage = (peerId: number, peerName: string) => {
-    // TODO: Implement message functionality
-    alert(`Messaging feature for ${peerName} will be implemented soon!`);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
@@ -182,17 +177,15 @@ const CourseSpecificPeers = ({ onLogout }: CourseSpecificPeersProps) => {
                       <p className="text-gray-600 text-sm mb-4 line-clamp-2">{peer.bio}</p>
                     )}
 
-                    <div className="flex space-x-2">
+                    <div className="flex">
+                      <a href={`mailto:${peer.email}`}>
                       <button
-                        onClick={() => handleSendMessage(peer.id, peer.name)}
                         className="flex-1 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center space-x-2"
                       >
                         <MessageCircle className="h-4 w-4" />
-                        <span>Message</span>
+                        <span>Connect</span>
                       </button>
-                      <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200">
-                        Connect
-                      </button>
+                      </a>
                     </div>
                   </div>
                 ))}

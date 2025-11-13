@@ -2,7 +2,9 @@ package com.studygroup.backend.service;
 
 import com.studygroup.backend.entity.PasswordResetToken;
 import com.studygroup.backend.entity.User;
+import com.studygroup.backend.entity.UserPreferences;
 import com.studygroup.backend.repository.PasswordResetTokenRepository;
+import com.studygroup.backend.repository.UserPreferencesRepository;
 import com.studygroup.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,6 +27,9 @@ public class UserService {
 
     @Autowired
     private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private UserPreferencesRepository userPreferencesRepository;
 
     @Autowired
     private EmailService emailService;
@@ -120,6 +125,20 @@ public class UserService {
         }
 
         emailService.sendPasswordResetEmail(email, token);
+    }
+
+    public Optional<User> findById(Long userId) {
+        return userRepository.findById(userId);
+    }
+
+    public User createUserWithPreferences(User user) {
+        User savedUser = userRepository.save(user);
+
+        // default preferences for new user
+        UserPreferences preferences = new UserPreferences(savedUser);
+        userPreferencesRepository.save(preferences);
+
+        return savedUser;
     }
 
     public User updateUserProfile(Long userId, User userDetails) {

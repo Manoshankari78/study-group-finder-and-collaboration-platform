@@ -196,7 +196,7 @@ public class GroupController {
     @GetMapping("/{groupId}/members")
     public ResponseEntity<?> getGroupMembers(@PathVariable Long groupId) {
         try {
-            List<User> members = groupService.getGroupMembers(groupId);
+            List<Map<String, Object>> members = groupService.getGroupMembersWithRoles(groupId);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Group members retrieved successfully",

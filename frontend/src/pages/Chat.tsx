@@ -540,7 +540,7 @@ const Chat = ({ onLogout }: ChatProps) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Message Input - Made responsive */}
+          {/* Message Input */}
           <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200 p-4">
             <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
               <button
