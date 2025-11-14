@@ -14,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user/preferences")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "https://edunion.onrender.com")
 public class UserPreferencesController {
 
     @Autowired
