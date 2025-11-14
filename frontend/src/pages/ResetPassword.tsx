@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Users, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Users, CheckCircle, Loader } from 'lucide-react';
 import { authAPI } from '../services/api';
 
 const ResetPassword = () => {
@@ -109,7 +109,7 @@ const ResetPassword = () => {
             <p className="text-gray-600 mb-6">
               Your password has been reset successfully. You will be redirected to the login page shortly.
             </p>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <Loader className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         </div>
       </div>

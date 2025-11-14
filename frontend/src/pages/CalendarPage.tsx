@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import { Calendar as CalendarIcon, Plus, Clock, MapPin, Users, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Clock, MapPin, Users, ChevronLeft, ChevronRight, X, Loader } from 'lucide-react';
 import { eventsAPI } from '../services/api';
 import { Calendar, momentLocalizer, View, Event as RBCEvent } from 'react-big-calendar';
 import moment from 'moment';
@@ -132,7 +132,7 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
         <Navbar onLogout={onLogout} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <Loader className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         </div>
       </div>
