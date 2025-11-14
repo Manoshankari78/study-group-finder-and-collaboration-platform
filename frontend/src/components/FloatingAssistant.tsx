@@ -364,7 +364,7 @@ const FloatingAssistant = () => {
                     <div className="flex-1 overflow-y-auto">
                         {isLoading ? (
                             <div className="flex justify-center items-center p-6">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                <Loader className="h-8 w-8 animate-spin text-blue-500" />
                             </div>
                         ) : filteredGroups.length === 0 ? (
                             <div className="text-center p-6 text-gray-500">

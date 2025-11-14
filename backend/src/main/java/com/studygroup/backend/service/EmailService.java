@@ -17,7 +17,7 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
 
             message.setTo(toEmail);
-            message.setSubject("Password Reset - Study Group Platform");
+            message.setSubject("Password Reset - Edunion");
 
             String resetLink = "http://localhost:5173/reset-password?token=" + resetToken;
             String emailText = buildEmailText(resetLink, resetToken);
@@ -38,11 +38,9 @@ public class EmailService {
         return """
             Password Reset Request
             
-            You requested to reset your password for the Study Group Platform.
+            You requested to reset your password for the Edunion Platform.
             
             Click this link to reset your password:%s
-            
-            Or use this token manually: %s
             
             This link will expire in 24 hours.
             

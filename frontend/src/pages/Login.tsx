@@ -69,7 +69,7 @@ const Login = () => {
               </div>
             </div>
             <h2 className="text-4xl font-bold font-inter bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-3">
-              {showForgotPassword ? 'Reset Password' : 'Welcome to StudyConnect'}
+              {showForgotPassword ? 'Reset Password' : 'Welcome to Edunion'}
             </h2>
             <p className="text-lg text-gray-600 font-roboto">
               {showForgotPassword ? 'Enter your email to reset password' : 'Connect, collaborate, and excel together'}

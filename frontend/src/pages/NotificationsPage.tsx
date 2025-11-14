@@ -16,7 +16,8 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Clock
+  Clock,
+  Loader
 } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { eventsAPI } from '../services/api';
@@ -158,7 +159,7 @@ const NotificationsPage = ({ onLogout }: NotificationsPageProps) => {
         <Navbar onLogout={onLogout} />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <Loader className="h-8 w-8 animate-spin text-blue-500" />
           </div>
         </div>
       </div>
