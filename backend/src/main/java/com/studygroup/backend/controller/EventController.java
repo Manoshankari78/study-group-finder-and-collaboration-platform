@@ -15,7 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/events")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "https://edunion.onrender.com")
 public class EventController {
 
     @Autowired
