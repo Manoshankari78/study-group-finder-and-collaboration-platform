@@ -70,7 +70,7 @@ const FloatingAssistant = () => {
     const location = useLocation();
     const { user } = useAuth();
     const messagesEndRef = useRef<HTMLDivElement>(null);
-     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -149,6 +149,27 @@ const FloatingAssistant = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+    const detectAndRenderLinks = (text: string) => {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = text.split(urlRegex);
+
+        return parts.map((part, index) => {
+            if (urlRegex.test(part)) {
+                return (
+                    <a
+                        key={index}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 underline hover:underline transition-colors"
+                    >
+                        {part}
+                    </a>
+                );
+            }
+            return <span key={index}>{part}</span>;
+        });
     };
 
     const fetchMessages = async (groupId: number) => {
@@ -418,40 +439,40 @@ const FloatingAssistant = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-        {events.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Calendar className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm">No upcoming sessions</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="bg-gray-50 rounded-lg p-3 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => setSelectedEvent(event)}
-              >
-                <h4 className="font-medium text-gray-800 text-sm mb-1">{event.title}</h4>
-                <p className="text-gray-600 text-xs mb-2">{event.group.name}</p>
-                <div className="space-y-1 text-xs text-gray-500">
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-3 w-3" />
-                    <span>
-                      {formatEventDate(event.startTime)} at {formatEventTime(event.startTime)}
-                    </span>
-                  </div>
-                  {event.location && (
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3" />
-                      <span className="truncate">{event.location}</span>
+                {events.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                        <Calendar className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm">No upcoming sessions</p>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                ) : (
+                    <div className="space-y-3">
+                        {events.map((event) => (
+                            <div
+                                key={event.id}
+                                className="bg-gray-50 rounded-lg p-3 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                                onClick={() => setSelectedEvent(event)}
+                            >
+                                <h4 className="font-medium text-gray-800 text-sm mb-1">{event.title}</h4>
+                                <p className="text-gray-600 text-xs mb-2">{event.group.name}</p>
+                                <div className="space-y-1 text-xs text-gray-500">
+                                    <div className="flex items-center space-x-1">
+                                        <Clock className="h-3 w-3" />
+                                        <span>
+                                            {formatEventDate(event.startTime)} at {formatEventTime(event.startTime)}
+                                        </span>
+                                    </div>
+                                    {event.location && (
+                                        <div className="flex items-center space-x-1">
+                                            <MapPin className="h-3 w-3" />
+                                            <span className="truncate">{event.location}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="p-3 rounded-b-2xl bg-gray-50 border-t border-gray-200">
                 <Link
@@ -568,55 +589,57 @@ const FloatingAssistant = () => {
                     onClick={() => setIsOpen(false)}
                 />
             )}
-            
-        {selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Event Details</h2>
-              <button
-                onClick={() => setSelectedEvent(null)}
-                className="p-2 text-gray-500 hover:text-gray-800 transition-colors rounded-lg hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-gray-800 text-lg">{selectedEvent.title}</h3>
-                <p className="text-gray-600 text-sm mt-1">{selectedEvent.group.name}</p>
-              </div>
+            {selectedEvent && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-gray-800">Event Details</h2>
+                            <button
+                                onClick={() => setSelectedEvent(null)}
+                                className="p-2 text-gray-500 hover:text-gray-800 transition-colors rounded-lg hover:bg-gray-100"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
 
-              {selectedEvent.description && (
-                <p className="text-gray-700">{selectedEvent.description}</p>
-              )}
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="font-semibold text-gray-800 text-lg">{selectedEvent.title}</h3>
+                                <p className="text-gray-600 text-sm mt-1">{selectedEvent.group.name}</p>
+                            </div>
 
-              <div className="space-y-3 pt-4 border-t">
-                <div className="flex items-start space-x-3">
-                  <Clock className="h-5 w-5 text-gray-500 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {formatEventDate(selectedEvent.startTime)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {formatEventTime(selectedEvent.startTime)} -{' '}
-                      {formatEventTime(selectedEvent.endTime)}
-                    </p>
-                  </div>
+                            {selectedEvent.description && (
+                                <p className="text-gray-700">{selectedEvent.description}</p>
+                            )}
+
+                            <div className="space-y-3 pt-4 border-t">
+                                <div className="flex items-start space-x-3">
+                                    <Clock className="h-5 w-5 text-gray-500 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-800">
+                                            {formatEventDate(selectedEvent.startTime)}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            {formatEventTime(selectedEvent.startTime)} -{' '}
+                                            {formatEventTime(selectedEvent.endTime)}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {selectedEvent.location && (
+                                    <div className="flex items-center space-x-3">
+                                        <MapPin className="h-4 w-4 text-gray-500" />
+                                        <p className="text-sm text-gray-800">
+                                            {detectAndRenderLinks(selectedEvent.location)}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                {selectedEvent.location && (
-                  <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
-                    <p className="text-sm text-gray-800">{selectedEvent.location}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
         </>
     );
 }

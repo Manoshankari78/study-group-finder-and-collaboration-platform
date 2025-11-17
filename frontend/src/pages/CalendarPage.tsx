@@ -61,6 +61,28 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
     }
   };
 
+  const detectAndRenderLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-700 underline hover:underline transition-colors"
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   const formatEventsForCalendar = (): CalendarEvent[] => {
     return events.map(event => ({
       id: event.id,
@@ -74,7 +96,7 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
   const eventStyleGetter = (event: CalendarEvent) => {
     const now = new Date();
     const isPast = event.end < now;
-    
+
     return {
       style: {
         backgroundColor: isPast ? '#6B7280' : '#2563EB',
@@ -91,12 +113,12 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
   const handleSelectSlot = (slotInfo: { start: Date; end: Date; slots: Date[]; action: 'select' | 'click' | 'doubleClick' }) => {
     const dayStart = moment(slotInfo.start).startOf('day').toDate();
     const dayEnd = moment(slotInfo.start).endOf('day').toDate();
-    
+
     const dayEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       return eventDate >= dayStart && eventDate <= dayEnd;
     });
-    
+
     setSelectedDate(slotInfo.start);
     setSelectedEvents(dayEvents);
   };
@@ -201,8 +223,8 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
               </div>
               <div className="p-6 space-y-4">
                 {upcomingEvents.map((event) => (
-                  <div 
-                    key={event.id} 
+                  <div
+                    key={event.id}
                     className="bg-gray-50 rounded-xl p-4 cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => setSelectedEvent(event)}
                   >
@@ -258,72 +280,64 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="overflow-y-auto max-h-[60vh] p-6">
                 {selectedEvents.length > 0 ? (
                   <div className="space-y-4">
                     {selectedEvents.map((event) => {
                       const isPast = new Date(event.endTime) < new Date();
-                      
+
                       return (
                         <div
                           key={event.id}
-                          className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
-                            isPast 
-                              ? 'bg-gray-50 border-gray-200' 
+                          className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${isPast
+                              ? 'bg-gray-50 border-gray-200'
                               : 'bg-blue-50 border-blue-200'
-                          }`}
+                            }`}
                           onClick={() => setSelectedEvent(event)}
                         >
                           <div className="flex items-start justify-between mb-2">
-                            <h3 className={`font-semibold ${
-                              isPast ? 'text-gray-700' : 'text-blue-700'
-                            }`}>
+                            <h3 className={`font-semibold ${isPast ? 'text-gray-700' : 'text-blue-700'
+                              }`}>
                               {event.title}
                             </h3>
-                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              isPast 
-                                ? 'bg-gray-200 text-gray-700' 
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${isPast
+                                ? 'bg-gray-200 text-gray-700'
                                 : 'bg-blue-200 text-blue-700'
-                            }`}>
+                              }`}>
                               {event.group.name}
                             </div>
                           </div>
-                          
+
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center space-x-2">
-                              <Clock className={`h-4 w-4 ${
-                                isPast ? 'text-gray-500' : 'text-blue-500'
-                              }`} />
+                              <Clock className={`h-4 w-4 ${isPast ? 'text-gray-500' : 'text-blue-500'
+                                }`} />
                               <span className={isPast ? 'text-gray-600' : 'text-blue-600'}>
                                 {formatTime(event.startTime)} - {formatTime(event.endTime)}
                               </span>
                             </div>
-                            
                             {event.location && (
                               <div className="flex items-center space-x-2">
-                                <MapPin className={`h-4 w-4 ${
-                                  isPast ? 'text-gray-500' : 'text-blue-500'
-                                }`} />
+                                <MapPin className={`h-4 w-4 ${isPast ? 'text-gray-500' : 'text-blue-500'
+                                  }`} />
                                 <span className={isPast ? 'text-gray-600' : 'text-blue-600'}>
-                                  {event.location}
+                                  {detectAndRenderLinks(event.location)}
                                 </span>
                               </div>
                             )}
-                            
+
                             <div className="flex items-center space-x-2">
-                              <Users className={`h-4 w-4 ${
-                                isPast ? 'text-gray-500' : 'text-blue-500'
-                              }`} />
+                              <Users className={`h-4 w-4 ${isPast ? 'text-gray-500' : 'text-blue-500'
+                                }`} />
                               <span className={isPast ? 'text-gray-600' : 'text-blue-600'}>
                                 Created by {event.createdBy.name}
                               </span>
                             </div>
-                            
+
                             {event.description && (
-                              <p className={`text-sm mt-2 ${
-                                isPast ? 'text-gray-600' : 'text-blue-600'
-                              }`}>
+                              <p className={`text-sm mt-2 ${isPast ? 'text-gray-600' : 'text-blue-600'
+                                }`}>
                                 {event.description}
                               </p>
                             )}
@@ -357,7 +371,7 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold text-gray-800 text-lg">{selectedEvent.title}</h3>
@@ -386,7 +400,9 @@ const CalendarPage = ({ onLogout }: CalendarProps) => {
                   {selectedEvent.location && (
                     <div className="flex items-center space-x-3">
                       <MapPin className="h-4 w-4 text-gray-500" />
-                      <p className="text-sm text-gray-800">{selectedEvent.location}</p>
+                      <p className="text-sm text-gray-800">
+                        {detectAndRenderLinks(selectedEvent.location)}
+                      </p>
                     </div>
                   )}
 

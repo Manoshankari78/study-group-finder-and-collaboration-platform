@@ -19,7 +19,7 @@ public class EmailService {
             message.setTo(toEmail);
             message.setSubject("Password Reset - Edunion");
 
-            String resetLink = "http://localhost:5173/reset-password?token=" + resetToken;
+            String resetLink = "https://edunion.onrender.com/reset-password?token=" + resetToken;
             String emailText = buildEmailText(resetLink, resetToken);
 
             message.setText(emailText);

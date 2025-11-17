@@ -63,10 +63,8 @@ const Login = () => {
         {/* Left Side - Login Form */}
         <div className="max-w-md w-full mx-auto lg:mx-0">
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
-              <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-4 rounded-2xl shadow-lg">
-                <Users className="h-10 w-10 text-white" />
-              </div>
+            <div className="flex justify-center items-center mb-6">
+                <img src="/logo.png" className='h-32 w-32' />
             </div>
             <h2 className="text-4xl font-bold font-inter bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-3">
               {showForgotPassword ? 'Reset Password' : 'Welcome to Edunion'}
