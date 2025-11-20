@@ -18,8 +18,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/groups")
-@CrossOrigin(origins = "https://edunion.onrender.com")
+@CrossOrigin(origins = "http://localhost:5173")
 public class GroupController {
+
     @Autowired
     private GroupService groupService;
 
@@ -136,7 +137,7 @@ public class GroupController {
         }
     }
 
-    // Get recommended groups for user
+    // Get recommended groups
     @GetMapping("/recommended")
     public ResponseEntity<?> getRecommendedGroups(@AuthenticationPrincipal UserDetails userDetails) {
         try {
@@ -164,7 +165,7 @@ public class GroupController {
 
             GroupMember groupMember = groupService.joinGroup(user.getId(), groupId);
 
-            String message = groupMember.getStatus().toString().equals("ACTIVE") ?
+            String message = groupMember.getStatus() == GroupMemberStatus.ACTIVE ?
                     "Successfully joined the group" : "Join request sent. Waiting for approval";
 
             return ResponseEntity.ok(Map.of(
@@ -207,7 +208,7 @@ public class GroupController {
         }
     }
 
-    // Get pending join requests (for group admins)
+    // 🔥 UPDATED: Get pending join requests (returns mapped user details)
     @GetMapping("/{groupId}/pending-requests")
     public ResponseEntity<?> getPendingRequests(@AuthenticationPrincipal UserDetails userDetails,
                                                 @PathVariable Long groupId) {
@@ -215,7 +216,8 @@ public class GroupController {
             User user = userService.findByEmail(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            List<GroupMember> pendingRequests = groupService.getPendingRequests(groupId, user.getId());
+            List<Map<String, Object>> pendingRequests =
+                    groupService.getPendingRequests(groupId, user.getId());
 
             return ResponseEntity.ok(Map.of(
                     "message", "Pending requests retrieved successfully",
@@ -236,9 +238,10 @@ public class GroupController {
             User adminUser = userService.findByEmail(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            GroupMember updatedMember = groupService.updateMemberStatus(groupId, userId, request.getStatus(), adminUser.getId());
+            GroupMember updatedMember =
+                    groupService.updateMemberStatus(groupId, userId, request.getStatus(), adminUser.getId());
 
-            String action = request.getStatus().toString().equals("ACTIVE") ? "approved" : "rejected";
+            String action = request.getStatus() == GroupMemberStatus.ACTIVE ? "approved" : "rejected";
 
             return ResponseEntity.ok(Map.of(
                     "message", "Join request " + action + " successfully",
@@ -249,6 +252,7 @@ public class GroupController {
         }
     }
 
+    // Get my membership
     @GetMapping("/{groupId}/my-membership")
     public ResponseEntity<?> getMyMembership(@AuthenticationPrincipal UserDetails userDetails,
                                              @PathVariable Long groupId) {
@@ -260,6 +264,7 @@ public class GroupController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Membership status retrieved successfully");
+
             if (membership != null) {
                 response.put("membership", membership);
                 response.put("status", membership.getStatus());
@@ -274,6 +279,8 @@ public class GroupController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    // Remove member
     @DeleteMapping("/{groupId}/members/{userId}")
     public ResponseEntity<?> removeMember(@AuthenticationPrincipal UserDetails userDetails,
                                           @PathVariable Long groupId,
@@ -290,7 +297,7 @@ public class GroupController {
         }
     }
 
-    // Request classes
+    // Request class
     public static class HandleRequestRequest {
         private GroupMemberStatus status;
 
