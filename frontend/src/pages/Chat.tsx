@@ -92,7 +92,7 @@ const Chat = ({ onLogout }: ChatProps) => {
       },
       (error) => {
         console.error('WebSocket error:', error);
-        toast.error('Connection error');
+        // toast.error('Connection error');
         setIsWebSocketConnected(false);
       }
     );
@@ -429,8 +429,7 @@ const Chat = ({ onLogout }: ChatProps) => {
                     </div>
                     <div>
                       <h1 className="text-lg font-bold text-gray-800">{activeGroup?.name}</h1>
-                      <p className="text-sm text-gray-600">
-                        {isWebSocketConnected ? 'Connected' : 'Connecting...'} • {activeGroup?.course.courseCode}
+                      <p className="text-sm text-gray-600">{activeGroup?.course.courseCode}
                       </p>
                     </div>
                   </div>
