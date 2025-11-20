@@ -264,9 +264,7 @@ public class GroupService {
             return memberData;
         }).collect(Collectors.toList());
     }
-
-
-    public List<GroupMember> getPendingRequests(Long groupId, Long adminUserId) {
+    public List<Map<String, Object>> getPendingRequests(Long groupId, Long adminUserId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Group not found"));
 
@@ -281,7 +279,20 @@ public class GroupService {
             throw new RuntimeException("Only group admins can view pending requests");
         }
 
-        return groupMemberRepository.findByGroupAndStatus(group, GroupMemberStatus.PENDING);
+        List<GroupMember> pendingMembers =
+                groupMemberRepository.findByGroupAndStatus(group, GroupMemberStatus.PENDING);
+
+        return pendingMembers.stream().map(member -> {
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", member.getId());
+            data.put("userId", member.getUser().getId());
+            data.put("name", member.getUser().getName());
+            data.put("email", member.getUser().getEmail());
+            data.put("avatarUrl", member.getUser().getAvatarUrl());
+            data.put("role", member.getRole().toString());
+            data.put("status", member.getStatus().toString());
+            return data;
+        }).collect(Collectors.toList());
     }
 
     public Group getGroupById(Long groupId) {
